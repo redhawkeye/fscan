@@ -16,16 +16,16 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
-	Common.LogDebug("Attempting anonymous login...")
+	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug("尝试匿名登录...")
 
-	// Attempt anonymous login
+	// 尝试匿名登录
 	for retryCount := 0; retryCount < maxRetries; retryCount++ {
 		success, dirs, err := FtpConn(info, "anonymous", "")
 		if success && err == nil {
-			Common.LogSuccess("Anonymous login successful!")
+			Common.LogSuccess("匿名登录成功!")
 
-			// Save anonymous login result
+			// 保存匿名登录结果
 			result := &Common.ScanResult{
 				Time:   time.Now(),
 				Type:   Common.VULN,
@@ -50,24 +50,24 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 
 	totalUsers := len(Common.Userdict["ftp"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("Starting username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// Iterate through username and password combinations
+	// 遍历用户名密码组合
 	for _, user := range Common.Userdict["ftp"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
 
 			var lastErr error
 
-			// Retry loop
+			// 重试循环
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -91,10 +91,10 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 				select {
 				case result := <-done:
 					if result.success && result.err == nil {
-						successLog := fmt.Sprintf("FTP service %s successfully brute-forced Username: %v Password: %v", target, user, pass)
+						successLog := fmt.Sprintf("FTP服务 %s 成功爆破 用户名: %v 密码: %v", target, user, pass)
 						Common.LogSuccess(successLog)
 
-						// Save brute-force success result
+						// 保存爆破成功结果
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -114,12 +114,12 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 					}
 					lastErr = result.err
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					lastErr = fmt.Errorf("Connection timeout")
+					lastErr = fmt.Errorf("连接超时")
 				}
 
-				// Error handling
+				// 错误处理
 				if lastErr != nil {
-					errlog := fmt.Sprintf("FTP service %s attempt failed Username: %v Password: %v Error: %v",
+					errlog := fmt.Sprintf("FTP服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
 						target, user, pass, lastErr)
 					Common.LogError(errlog)
 
@@ -128,7 +128,7 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 					}
 
 					if strings.Contains(lastErr.Error(), "too many connections") {
-						Common.LogDebug("Too many connections, waiting 5 seconds...")
+						Common.LogDebug("连接数过多，等待5秒...")
 						time.Sleep(5 * time.Second)
 						if retryCount < maxRetries-1 {
 							continue
@@ -139,15 +139,15 @@ func FtpScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d combinations", tried))
+	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
 	return tmperr
 }
 
-// FtpConn establishes an FTP connection and attempts login
+// FtpConn 建立FTP连接并尝试登录
 func FtpConn(info *Common.HostInfo, user string, pass string) (success bool, directories []string, err error) {
 	Host, Port := info.Host, info.Ports
 
-	// Establish FTP connection
+	// 建立FTP连接
 	conn, err := ftp.DialTimeout(fmt.Sprintf("%v:%v", Host, Port), time.Duration(Common.Timeout)*time.Second)
 	if err != nil {
 		return false, nil, err
@@ -158,12 +158,12 @@ func FtpConn(info *Common.HostInfo, user string, pass string) (success bool, dir
 		}
 	}()
 
-	// Attempt login
+	// 尝试登录
 	if err = conn.Login(user, pass); err != nil {
 		return false, nil, err
 	}
 
-	// Get directory information
+	// 获取目录信息
 	dirs, err := conn.List("")
 	if err == nil && len(dirs) > 0 {
 		directories = make([]string, 0, min(6, len(dirs)))
@@ -179,7 +179,7 @@ func FtpConn(info *Common.HostInfo, user string, pass string) (success bool, dir
 	return true, directories, nil
 }
 
-// min returns the smaller of two integers
+// min 返回两个整数中的较小值
 func min(a, b int) int {
 	if a < b {
 		return a
