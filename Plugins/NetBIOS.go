@@ -21,12 +21,12 @@ func NetBIOS(info *Common.HostInfo) error {
 		result := fmt.Sprintf("NetBios %-15s %s", info.Host, output)
 		Common.LogSuccess(result)
 
-		// 保存结果
+		// Save result
 		details := map[string]interface{}{
 			"port": info.Ports,
 		}
 
-		// 添加有效的 NetBIOS 信息
+		// Add valid NetBIOS information
 		if netbios.ComputerName != "" {
 			details["computer_name"] = netbios.ComputerName
 		}
@@ -243,7 +243,7 @@ type NetBiosInfo struct {
 
 func (info *NetBiosInfo) String() (output string) {
 	var text string
-	//ComputerName 信息比较全
+	//ComputerName information is more complete
 	if info.ComputerName != "" {
 		if !strings.Contains(info.ComputerName, ".") && info.GroupName != "" {
 			text = fmt.Sprintf("%s\\%s", info.GroupName, info.ComputerName)
@@ -251,7 +251,7 @@ func (info *NetBiosInfo) String() (output string) {
 			text = info.ComputerName
 		}
 	} else {
-		//组信息
+		//Group information
 		if info.DomainName != "" {
 			text += info.DomainName
 			text += "\\"
@@ -259,7 +259,7 @@ func (info *NetBiosInfo) String() (output string) {
 			text += info.NetDomainName
 			text += "\\"
 		}
-		//机器名
+		//Machine name
 		if info.ServerService != "" {
 			text += info.ServerService
 		} else if info.WorkstationService != "" {
@@ -385,7 +385,7 @@ func ParseNTLM(ret []byte) (netbios NetBiosInfo, err error) {
 		item_content := bytes.ReplaceAll(ret[index+4:index+4+item_length], []byte{0x00}, []byte{})
 		index += 4 + item_length
 		if string(item_type) == "\x07\x00" {
-			//Time stamp, 不需要输出
+			//Time stamp, not needed
 		} else if NetBIOS_ITEM_TYPE[string(item_type)] != "" {
 			msg += fmt.Sprintf("%s: %s\n", NetBIOS_ITEM_TYPE[string(item_type)], string(item_content))
 		} else if string(item_type) == "\x00\x00" {

