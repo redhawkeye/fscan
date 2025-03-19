@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-// MongodbScan 执行MongoDB未授权扫描
+// MongodbScan executes a MongoDB unauthorized scan
 func MongodbScan(info *Common.HostInfo) error {
 	if Common.DisableBrute {
 		return nil
@@ -20,10 +20,10 @@ func MongodbScan(info *Common.HostInfo) error {
 		errlog := fmt.Sprintf("MongoDB %v %v", target, err)
 		Common.LogError(errlog)
 	} else if isUnauth {
-		// 记录控制台输出
-		Common.LogSuccess(fmt.Sprintf("MongoDB %v 未授权访问", target))
+		// Log console output
+		Common.LogSuccess(fmt.Sprintf("MongoDB %v unauthorized access", target))
 
-		// 保存未授权访问结果
+		// Save unauthorized access result
 		result := &Common.ScanResult{
 			Time:   time.Now(),
 			Type:   Common.VULN,
@@ -42,24 +42,24 @@ func MongodbScan(info *Common.HostInfo) error {
 	return err
 }
 
-// MongodbUnauth 检测MongoDB未授权访问
+// MongodbUnauth checks for MongoDB unauthorized access
 func MongodbUnauth(info *Common.HostInfo) (bool, error) {
 	msgPacket := createOpMsgPacket()
 	queryPacket := createOpQueryPacket()
 
 	realhost := fmt.Sprintf("%s:%v", info.Host, info.Ports)
 
-	// 尝试OP_MSG查询
+	// Attempt OP_MSG query
 	reply, err := checkMongoAuth(realhost, msgPacket)
 	if err != nil {
-		// 失败则尝试OP_QUERY查询
+		// If failed, attempt OP_QUERY query
 		reply, err = checkMongoAuth(realhost, queryPacket)
 		if err != nil {
 			return false, err
 		}
 	}
 
-	// 检查响应结果
+	// Check response result
 	if strings.Contains(reply, "totalLinesWritten") {
 		return true, nil
 	}
@@ -67,26 +67,26 @@ func MongodbUnauth(info *Common.HostInfo) (bool, error) {
 	return false, nil
 }
 
-// checkMongoAuth 检查MongoDB认证状态
+// checkMongoAuth checks MongoDB authentication status
 func checkMongoAuth(address string, packet []byte) (string, error) {
-	// 建立TCP连接
+	// Establish TCP connection
 	conn, err := Common.WrapperTcpWithTimeout("tcp", address, time.Duration(Common.Timeout)*time.Second)
 	if err != nil {
 		return "", err
 	}
 	defer conn.Close()
 
-	// 设置超时时间
+	// Set timeout
 	if err := conn.SetReadDeadline(time.Now().Add(time.Duration(Common.Timeout) * time.Second)); err != nil {
 		return "", err
 	}
 
-	// 发送查询包
+	// Send query packet
 	if _, err := conn.Write(packet); err != nil {
 		return "", err
 	}
 
-	// 读取响应
+	// Read response
 	reply := make([]byte, 1024)
 	count, err := conn.Read(reply)
 	if err != nil {
@@ -96,7 +96,7 @@ func checkMongoAuth(address string, packet []byte) (string, error) {
 	return string(reply[:count]), nil
 }
 
-// createOpMsgPacket 创建OP_MSG查询包
+// createOpMsgPacket creates an OP_MSG query packet
 func createOpMsgPacket() []byte {
 	return []byte{
 		0x69, 0x00, 0x00, 0x00, // messageLength
@@ -109,7 +109,7 @@ func createOpMsgPacket() []byte {
 	}
 }
 
-// createOpQueryPacket 创建OP_QUERY查询包
+// createOpQueryPacket creates an OP_QUERY query packet
 func createOpQueryPacket() []byte {
 	return []byte{
 		0x48, 0x00, 0x00, 0x00, // messageLength

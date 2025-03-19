@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// MssqlScan 执行MSSQL服务扫描
+// MssqlScan executes an MSSQL service scan
 func MssqlScan(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return
@@ -18,28 +18,28 @@ func MssqlScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
 	totalUsers := len(Common.Userdict["mssql"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// 遍历所有用户名密码组合
+	// Iterate through all username and password combinations
 	for _, user := range Common.Userdict["mssql"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
-				// 执行MSSQL连接
+				// Execute MSSQL connection
 				done := make(chan struct {
 					success bool
 					err     error
@@ -56,7 +56,7 @@ func MssqlScan(info *Common.HostInfo) (tmperr error) {
 					}
 				}(user, pass)
 
-				// 等待结果或超时
+				// Wait for result or timeout
 				var err error
 				select {
 				case result := <-done:
@@ -65,7 +65,7 @@ func MssqlScan(info *Common.HostInfo) (tmperr error) {
 						successMsg := fmt.Sprintf("MSSQL %s %v %v", target, user, pass)
 						Common.LogSuccess(successMsg)
 
-						// 保存结果
+						// Save result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -83,7 +83,7 @@ func MssqlScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
@@ -103,34 +103,34 @@ func MssqlScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan completed, tried %d combinations", tried))
 	return tmperr
 }
 
-// MssqlConn 尝试MSSQL连接
+// MssqlConn attempts MSSQL connection
 func MssqlConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 	host, port, username, password := info.Host, info.Ports, user, pass
 	timeout := time.Duration(Common.Timeout) * time.Second
 
-	// 构造连接字符串
+	// Construct connection string
 	connStr := fmt.Sprintf(
 		"server=%s;user id=%s;password=%s;port=%v;encrypt=disable;timeout=%v",
 		host, username, password, port, timeout,
 	)
 
-	// 建立数据库连接
+	// Establish database connection
 	db, err := sql.Open("mssql", connStr)
 	if err != nil {
 		return false, err
 	}
 	defer db.Close()
 
-	// 设置连接参数
+	// Set connection parameters
 	db.SetConnMaxLifetime(timeout)
 	db.SetConnMaxIdleTime(timeout)
 	db.SetMaxIdleConns(0)
 
-	// 测试连接
+	// Test connection
 	if err = db.Ping(); err != nil {
 		return false, err
 	}

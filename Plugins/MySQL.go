@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// MysqlScan 执行MySQL服务扫描
+// MysqlScan executes a MySQL service scan
 func MysqlScan(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return
@@ -18,25 +18,25 @@ func MysqlScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
 	totalUsers := len(Common.Userdict["mysql"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// 遍历所有用户名密码组合
+	// Iterate through all username and password combinations
 	for _, user := range Common.Userdict["mysql"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -63,7 +63,7 @@ func MysqlScan(info *Common.HostInfo) (tmperr error) {
 						successMsg := fmt.Sprintf("MySQL %s %v %v", target, user, pass)
 						Common.LogSuccess(successMsg)
 
-						// 保存结果
+						// Save result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -81,7 +81,7 @@ func MysqlScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
@@ -89,7 +89,7 @@ func MysqlScan(info *Common.HostInfo) (tmperr error) {
 					Common.LogError(errMsg)
 
 					if strings.Contains(err.Error(), "Access denied") {
-						break // 认证失败，尝试下一个密码
+						break // Authentication failed, try next password
 					}
 
 					if retryErr := Common.CheckErrs(err); retryErr != nil {
@@ -107,38 +107,38 @@ func MysqlScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan completed, tried %d combinations", tried))
 	return tmperr
 }
 
-// MysqlConn 尝试MySQL连接
+// MysqlConn attempts MySQL connection
 func MysqlConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 	host, port, username, password := info.Host, info.Ports, user, pass
 	timeout := time.Duration(Common.Timeout) * time.Second
 
-	// 构造连接字符串
+	// Construct connection string
 	connStr := fmt.Sprintf(
 		"%v:%v@tcp(%v:%v)/mysql?charset=utf8&timeout=%v",
 		username, password, host, port, timeout,
 	)
 
-	// 建立数据库连接
+	// Establish database connection
 	db, err := sql.Open("mysql", connStr)
 	if err != nil {
 		return false, err
 	}
 	defer db.Close()
 
-	// 设置连接参数
+	// Set connection parameters
 	db.SetConnMaxLifetime(timeout)
 	db.SetConnMaxIdleTime(timeout)
 	db.SetMaxIdleConns(0)
 
-	// 测试连接
+	// Test connection
 	if err = db.Ping(); err != nil {
 		return false, err
 	}
 
-	// 连接成功，只返回结果，不打印日志
+	// Connection successful, only return result, do not log
 	return true, nil
 }
