@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// RabbitMQScan 执行 RabbitMQ 服务扫描
+// RabbitMQScan performs a scan on RabbitMQ service
 func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return
@@ -18,14 +18,14 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
-	Common.LogDebug("尝试默认账号 guest/guest")
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
+	Common.LogDebug("Trying default account guest/guest")
 
-	// 先测试默认账号 guest/guest
+	// First, test the default account guest/guest
 	user, pass := "guest", "guest"
 	for retryCount := 0; retryCount < maxRetries; retryCount++ {
 		if retryCount > 0 {
-			Common.LogDebug(fmt.Sprintf("第%d次重试默认账号: guest/guest", retryCount+1))
+			Common.LogDebug(fmt.Sprintf("Retry %d for default account: guest/guest", retryCount+1))
 		}
 
 		done := make(chan struct {
@@ -49,17 +49,17 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 		case result := <-done:
 			err = result.err
 			if result.success && err == nil {
-				successMsg := fmt.Sprintf("RabbitMQ服务 %s 连接成功 用户名: %v 密码: %v", target, user, pass)
+				successMsg := fmt.Sprintf("RabbitMQ service %s connected successfully Username: %v Password: %v", target, user, pass)
 				Common.LogSuccess(successMsg)
 
-				// 保存结果
+				// Save result
 				vulnResult := &Common.ScanResult{
 					Time:   time.Now(),
 					Type:   Common.VULN,
 					Target: info.Host,
 					Status: "vulnerable",
 					Details: map[string]interface{}{
-						"port":     info.Ports,
+						"port":     info.Pports,
 						"service":  "rabbitmq",
 						"username": user,
 						"password": pass,
@@ -70,11 +70,11 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 				return nil
 			}
 		case <-time.After(time.Duration(Common.Timeout) * time.Second):
-			err = fmt.Errorf("连接超时")
+			err = fmt.Errorf("Connection timeout")
 		}
 
 		if err != nil {
-			errlog := fmt.Sprintf("RabbitMQ服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
+			errlog := fmt.Sprintf("RabbitMQ service %s attempt failed Username: %v Password: %v Error: %v",
 				target, user, pass, err)
 			Common.LogError(errlog)
 
@@ -93,18 +93,18 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 	total := totalUsers * totalPass
 	tried := 0
 
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting to try username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
-	// 遍历其他用户名密码组合
+	// Iterate through other username and password combinations
 	for _, user := range Common.Userdict["rabbitmq"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -128,11 +128,11 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 				case result := <-done:
 					err = result.err
 					if result.success && err == nil {
-						successMsg := fmt.Sprintf("RabbitMQ服务 %s 连接成功 用户名: %v 密码: %v",
+						successMsg := fmt.Sprintf("RabbitMQ service %s connected successfully Username: %v Password: %v",
 							target, user, pass)
 						Common.LogSuccess(successMsg)
 
-						// 保存结果
+						// Save result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -150,11 +150,11 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
-					errlog := fmt.Sprintf("RabbitMQ服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
+					errlog := fmt.Sprintf("RabbitMQ service %s attempt failed Username: %v Password: %v Error: %v",
 						target, user, pass, err)
 					Common.LogError(errlog)
 
@@ -170,36 +170,36 @@ func RabbitMQScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried+1))
+	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d combinations", tried+1))
 	return tmperr
 }
 
-// RabbitMQConn 尝试 RabbitMQ 连接
+// RabbitMQConn attempts to connect to RabbitMQ
 func RabbitMQConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 	host, port := info.Host, info.Ports
 	timeout := time.Duration(Common.Timeout) * time.Second
 
-	// 构造 AMQP URL
+	// Construct AMQP URL
 	amqpURL := fmt.Sprintf("amqp://%s:%s@%s:%s/", user, pass, host, port)
 
-	// 配置连接
+	// Configure connection
 	config := amqp.Config{
 		Dial: func(network, addr string) (net.Conn, error) {
 			return net.DialTimeout(network, addr, timeout)
 		},
 	}
 
-	// 尝试连接
+	// Attempt connection
 	conn, err := amqp.DialConfig(amqpURL, config)
 	if err != nil {
 		return false, err
 	}
 	defer conn.Close()
 
-	// 如果成功连接
+	// If connection is successful
 	if conn != nil {
 		return true, nil
 	}
 
-	return false, fmt.Errorf("认证失败")
+	return false, fmt.Errorf("Authentication failed")
 }

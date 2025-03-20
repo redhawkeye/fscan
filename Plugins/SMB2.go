@@ -11,18 +11,18 @@ import (
 	"github.com/hirochachacha/go-smb2"
 )
 
-// SmbScan2 执行SMB2服务的认证扫描，支持密码和哈希两种认证方式
+// SmbScan2 performs authentication scan for SMB2 service, supporting both password and hash authentication
 func SmbScan2(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return nil
 	}
 
-	// 使用哈希认证模式
+	// Use hash authentication mode
 	if len(Common.HashBytes) > 0 {
 		return smbHashScan(info)
 	}
 
-	// 使用密码认证模式
+	// Use password authentication mode
 	return smbPasswordScan(info)
 }
 
@@ -33,19 +33,19 @@ func smbPasswordScan(info *Common.HostInfo) error {
 
 	hasprint := false
 
-	// 遍历每个用户
+	// Iterate through each user
 	for _, user := range Common.Userdict["smb"] {
-		accountLocked := false // 添加账户锁定标志
+		accountLocked := false // Add account lock flag
 
-		// 遍历该用户的所有密码
+		// Iterate through all passwords for the user
 		for _, pass := range Common.Passwords {
-			if accountLocked { // 如果账户被锁定，跳过剩余密码
+			if accountLocked { // Skip remaining passwords if account is locked
 				break
 			}
 
 			pass = strings.ReplaceAll(pass, "{user}", user)
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < Common.MaxRetries; retryCount++ {
 				success, err, printed := Smb2Con(info, user, pass, []byte{}, hasprint)
 
@@ -61,14 +61,14 @@ func smbPasswordScan(info *Common.HostInfo) error {
 				if err != nil {
 					logFailedAuth(info, user, pass, []byte{}, err)
 
-					// 检查是否账户锁定
+					// Check if account is locked
 					if strings.Contains(err.Error(), "account has been automatically locked") ||
 						strings.Contains(err.Error(), "account has been locked") {
-						accountLocked = true // 设置锁定标志
+						accountLocked = true // Set lock flag
 						break
 					}
 
-					// 其他登录失败情况
+					// Other login failure cases
 					if strings.Contains(err.Error(), "LOGIN_FAILED") ||
 						strings.Contains(err.Error(), "Authentication failed") ||
 						strings.Contains(err.Error(), "attempted logon is invalid") ||
@@ -96,11 +96,11 @@ func smbHashScan(info *Common.HostInfo) error {
 
 	hasprint := false
 
-	// 遍历每个用户
+	// Iterate through each user
 	for _, user := range Common.Userdict["smb"] {
-		// 遍历该用户的所有hash
+		// Iterate through all hashes for the user
 		for _, hash := range Common.HashBytes {
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < Common.MaxRetries; retryCount++ {
 				success, err, printed := Smb2Con(info, user, "", hash, hasprint)
 
@@ -116,13 +116,13 @@ func smbHashScan(info *Common.HostInfo) error {
 				if err != nil {
 					logFailedAuth(info, user, "", hash, err)
 
-					// 检查是否账户锁定
+					// Check if account is locked
 					if strings.Contains(err.Error(), "user account has been automatically locked") {
-						// 账户锁定，跳过该用户的剩余hash
+						// Account locked, skip remaining hashes for the user
 						break
 					}
 
-					// 其他登录失败情况
+					// Other login failure cases
 					if strings.Contains(err.Error(), "LOGIN_FAILED") ||
 						strings.Contains(err.Error(), "Authentication failed") ||
 						strings.Contains(err.Error(), "attempted logon is invalid") ||
@@ -143,14 +143,14 @@ func smbHashScan(info *Common.HostInfo) error {
 	return nil
 }
 
-// logSuccessfulAuth 记录成功的认证
+// logSuccessfulAuth logs successful authentication
 func logSuccessfulAuth(info *Common.HostInfo, user, pass string, hash []byte) {
 	credential := pass
 	if len(hash) > 0 {
 		credential = Common.HashValue
 	}
 
-	// 保存认证成功结果
+	// Save successful authentication result
 	result := &Common.ScanResult{
 		Time:   time.Now(),
 		Type:   Common.VULN,
@@ -168,12 +168,12 @@ func logSuccessfulAuth(info *Common.HostInfo, user, pass string, hash []byte) {
 	}
 	Common.SaveResult(result)
 
-	// 控制台输出
+	// Console output
 	var msg string
 	if Common.Domain != "" {
-		msg = fmt.Sprintf("SMB2认证成功 %s:%s %s\\%s", info.Host, info.Ports, Common.Domain, user)
+		msg = fmt.Sprintf("SMB2 authentication successful %s:%s %s\\%s", info.Host, info.Ports, Common.Domain, user)
 	} else {
-		msg = fmt.Sprintf("SMB2认证成功 %s:%s %s", info.Host, info.Ports, user)
+		msg = fmt.Sprintf("SMB2 authentication successful %s:%s %s", info.Host, info.Ports, user)
 	}
 
 	if len(hash) > 0 {
@@ -184,91 +184,91 @@ func logSuccessfulAuth(info *Common.HostInfo, user, pass string, hash []byte) {
 	Common.LogSuccess(msg)
 }
 
-// logFailedAuth 记录失败的认证
+// logFailedAuth logs failed authentication
 func logFailedAuth(info *Common.HostInfo, user, pass string, hash []byte, err error) {
 	var errlog string
 	if len(hash) > 0 {
-		errlog = fmt.Sprintf("SMB2认证失败 %s:%s %s Hash:%s %v",
+		errlog = fmt.Sprintf("SMB2 authentication failed %s:%s %s Hash:%s %v",
 			info.Host, info.Ports, user, Common.HashValue, err)
 	} else {
-		errlog = fmt.Sprintf("SMB2认证失败 %s:%s %s:%s %v",
+		errlog = fmt.Sprintf("SMB2 authentication failed %s:%s %s:%s %v",
 			info.Host, info.Ports, user, pass, err)
 	}
 	errlog = strings.ReplaceAll(errlog, "\n", " ")
 	Common.LogError(errlog)
 }
 
-// Smb2Con 尝试SMB2连接并进行认证，检查共享访问权限
+// Smb2Con attempts SMB2 connection and authentication, checks share access permissions
 func Smb2Con(info *Common.HostInfo, user string, pass string, hash []byte, hasprint bool) (flag bool, err error, flag2 bool) {
-	// 建立TCP连接
+	// Establish TCP connection
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", info.Host),
 		time.Duration(Common.Timeout)*time.Second)
 	if err != nil {
-		return false, fmt.Errorf("连接失败: %v", err), false
+		return false, fmt.Errorf("Connection failed: %v", err), false
 	}
 	defer conn.Close()
 
-	// 配置NTLM认证
+	// Configure NTLM authentication
 	initiator := smb2.NTLMInitiator{
 		User:   user,
 		Domain: Common.Domain,
 	}
 
-	// 设置认证方式(哈希或密码)
+	// Set authentication method (hash or password)
 	if len(hash) > 0 {
 		initiator.Hash = hash
 	} else {
 		initiator.Password = pass
 	}
 
-	// 创建SMB2会话
+	// Create SMB2 session
 	d := &smb2.Dialer{
 		Initiator: &initiator,
 	}
 	session, err := d.Dial(conn)
 	if err != nil {
-		return false, fmt.Errorf("SMB2会话建立失败: %v", err), false
+		return false, fmt.Errorf("SMB2 session establishment failed: %v", err), false
 	}
 	defer session.Logoff()
 
-	// 获取共享列表
+	// Get share list
 	shares, err := session.ListSharenames()
 	if err != nil {
-		return false, fmt.Errorf("获取共享列表失败: %v", err), false
+		return false, fmt.Errorf("Failed to get share list: %v", err), false
 	}
 
-	// 打印共享信息(如果未打印过)
+	// Print share information (if not printed before)
 	if !hasprint {
 		logShareInfo(info, user, pass, hash, shares)
 		flag2 = true
 	}
 
-	// 尝试访问C$共享以验证管理员权限
+	// Attempt to access C$ share to verify admin privileges
 	fs, err := session.Mount("C$")
 	if err != nil {
-		return false, fmt.Errorf("挂载C$失败: %v", err), flag2
+		return false, fmt.Errorf("Failed to mount C$: %v", err), flag2
 	}
 	defer fs.Umount()
 
-	// 尝试读取系统文件以验证权限
+	// Attempt to read system file to verify permissions
 	path := `Windows\win.ini`
 	f, err := fs.OpenFile(path, os.O_RDONLY, 0666)
 	if err != nil {
-		return false, fmt.Errorf("访问系统文件失败: %v", err), flag2
+		return false, fmt.Errorf("Failed to access system file: %v", err), flag2
 	}
 	defer f.Close()
 
 	return true, nil, flag2
 }
 
-// logShareInfo 记录SMB共享信息
+// logShareInfo logs SMB share information
 func logShareInfo(info *Common.HostInfo, user string, pass string, hash []byte, shares []string) {
 	credential := pass
 	if len(hash) > 0 {
 		credential = Common.HashValue
 	}
 
-	// 保存共享信息结果
+	// Save share information result
 	result := &Common.ScanResult{
 		Time:   time.Now(),
 		Type:   Common.VULN,
@@ -286,12 +286,12 @@ func logShareInfo(info *Common.HostInfo, user string, pass string, hash []byte, 
 	}
 	Common.SaveResult(result)
 
-	// 控制台输出
+	// Console output
 	var msg string
 	if Common.Domain != "" {
-		msg = fmt.Sprintf("SMB2共享信息 %s:%s %s\\%s", info.Host, info.Ports, Common.Domain, user)
+		msg = fmt.Sprintf("SMB2 share information %s:%s %s\\%s", info.Host, info.Ports, Common.Domain, user)
 	} else {
-		msg = fmt.Sprintf("SMB2共享信息 %s:%s %s", info.Host, info.Ports, user)
+		msg = fmt.Sprintf("SMB2 share information %s:%s %s", info.Host, info.Ports, user)
 	}
 
 	if len(hash) > 0 {
@@ -299,6 +299,6 @@ func logShareInfo(info *Common.HostInfo, user string, pass string, hash []byte, 
 	} else {
 		msg += fmt.Sprintf(" Pass:%s", pass)
 	}
-	msg += fmt.Sprintf(" 共享:%v", shares)
+	msg += fmt.Sprintf(" Shares:%v", shares)
 	Common.LogInfo(msg)
 }

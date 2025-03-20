@@ -16,20 +16,20 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
-	Common.LogDebug("尝试匿名访问...")
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
+	Common.LogDebug("Trying anonymous access...")
 
-	// 首先测试匿名访问
+	// First, test anonymous access
 	for retryCount := 0; retryCount < maxRetries; retryCount++ {
 		if retryCount > 0 {
-			Common.LogDebug(fmt.Sprintf("第%d次重试匿名访问", retryCount+1))
+			Common.LogDebug(fmt.Sprintf("Retry %d for anonymous access", retryCount+1))
 		}
 
 		flag, err := RsyncConn(info, "", "")
 		if flag && err == nil {
-			Common.LogSuccess(fmt.Sprintf("Rsync服务 %s 匿名访问成功", target))
+			Common.LogSuccess(fmt.Sprintf("Rsync service %s anonymous access successful", target))
 
-			// 保存匿名访问结果
+			// Save anonymous access result
 			result := &Common.ScanResult{
 				Time:   time.Now(),
 				Type:   Common.VULN,
@@ -46,20 +46,20 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 		}
 
 		if err != nil {
-			Common.LogError(fmt.Sprintf("Rsync服务 %s 匿名访问失败: %v", target, err))
+			Common.LogError(fmt.Sprintf("Rsync service %s anonymous access failed: %v", target, err))
 			if retryErr := Common.CheckErrs(err); retryErr != nil {
 				if retryCount == maxRetries-1 {
 					return err
-				}
+					}
 				continue
+				}
 			}
-		}
 		break
-	}
+		}
 
 	totalUsers := len(Common.Userdict["rsync"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting to try username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
@@ -68,11 +68,11 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -96,10 +96,10 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 				case result := <-done:
 					err = result.err
 					if result.success {
-						Common.LogSuccess(fmt.Sprintf("Rsync服务 %s 爆破成功 用户名: %v 密码: %v",
+						Common.LogSuccess(fmt.Sprintf("Rsync service %s brute force successful Username: %v Password: %v",
 							target, user, pass))
 
-						// 保存爆破成功结果
+						// Save brute force result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -117,11 +117,11 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
-					Common.LogError(fmt.Sprintf("Rsync服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
+					Common.LogError(fmt.Sprintf("Rsync service %s attempt failed Username: %v Password: %v Error: %v",
 						target, user, pass, err))
 					if retryErr := Common.CheckErrs(err); retryErr != nil {
 						if retryCount == maxRetries-1 {
@@ -135,7 +135,7 @@ func RsyncScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d combinations", tried))
 	return tmperr
 }
 
@@ -143,7 +143,7 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 	host, port := info.Host, info.Ports
 	timeout := time.Duration(Common.Timeout) * time.Second
 
-	// 建立连接
+	// Establish connection
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), timeout)
 	if err != nil {
 		return false, err
@@ -152,7 +152,7 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 
 	buffer := make([]byte, 1024)
 
-	// 1. 读取服务器初始greeting
+	// 1. Read server initial greeting
 	n, err := conn.Read(buffer)
 	if err != nil {
 		return false, err
@@ -160,25 +160,25 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 
 	greeting := string(buffer[:n])
 	if !strings.HasPrefix(greeting, "@RSYNCD:") {
-		return false, fmt.Errorf("不是Rsync服务")
+		return false, fmt.Errorf("Not an Rsync service")
 	}
 
-	// 获取服务器版本号
+	// Get server version
 	version := strings.TrimSpace(strings.TrimPrefix(greeting, "@RSYNCD:"))
 
-	// 2. 回应相同的版本号
+	// 2. Respond with the same version
 	_, err = conn.Write([]byte(fmt.Sprintf("@RSYNCD: %s\n", version)))
 	if err != nil {
 		return false, err
 	}
 
-	// 3. 选择模块 - 先列出可用模块
+	// 3. Select module - list available modules first
 	_, err = conn.Write([]byte("#list\n"))
 	if err != nil {
 		return false, err
 	}
 
-	// 4. 读取模块列表
+	// 4. Read module list
 	var moduleList strings.Builder
 	for {
 		n, err = conn.Read(buffer)
@@ -198,17 +198,17 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 			continue
 		}
 
-		// 获取模块名
+		// Get module name
 		moduleName := strings.Fields(module)[0]
 
-		// 5. 为每个模块创建新连接尝试认证
+		// 5. Create new connection for each module to try authentication
 		authConn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", host, port), timeout)
 		if err != nil {
 			continue
 		}
 		defer authConn.Close()
 
-		// 重复初始握手
+		// Repeat initial handshake
 		_, err = authConn.Read(buffer)
 		if err != nil {
 			authConn.Close()
@@ -221,14 +221,14 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 			continue
 		}
 
-		// 6. 选择模块
+		// 6. Select module
 		_, err = authConn.Write([]byte(moduleName + "\n"))
 		if err != nil {
 			authConn.Close()
 			continue
 		}
 
-		// 7. 等待认证挑战
+		// 7. Wait for authentication challenge
 		n, err = authConn.Read(buffer)
 		if err != nil {
 			authConn.Close()
@@ -237,15 +237,15 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 
 		authResponse := string(buffer[:n])
 		if strings.Contains(authResponse, "@RSYNCD: OK") {
-			// 模块不需要认证
+			// Module does not require authentication
 			if user == "" && pass == "" {
-				result := fmt.Sprintf("Rsync服务 %v:%v 模块:%v 无需认证", host, port, moduleName)
+				result := fmt.Sprintf("Rsync service %v:%v Module:%v No authentication required", host, port, moduleName)
 				Common.LogSuccess(result)
 				return true, nil
 			}
 		} else if strings.Contains(authResponse, "@RSYNCD: AUTHREQD") {
 			if user != "" && pass != "" {
-				// 8. 发送认证信息
+				// 8. Send authentication information
 				authString := fmt.Sprintf("%s %s\n", user, pass)
 				_, err = authConn.Write([]byte(authString))
 				if err != nil {
@@ -253,7 +253,7 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 					continue
 				}
 
-				// 9. 读取认证结果
+				// 9. Read authentication result
 				n, err = authConn.Read(buffer)
 				if err != nil {
 					authConn.Close()
@@ -261,7 +261,7 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 				}
 
 				if !strings.Contains(string(buffer[:n]), "@ERROR") {
-					result := fmt.Sprintf("Rsync服务 %v:%v 模块:%v 认证成功 用户名: %v 密码: %v",
+					result := fmt.Sprintf("Rsync service %v:%v Module:%v Authentication successful Username: %v Password: %v",
 						host, port, moduleName, user, pass)
 					Common.LogSuccess(result)
 					return true, nil
@@ -271,5 +271,5 @@ func RsyncConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 		authConn.Close()
 	}
 
-	return false, fmt.Errorf("认证失败或无可用模块")
+	return false, fmt.Errorf("Authentication failed or no available modules")
 }

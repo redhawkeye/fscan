@@ -34,6 +34,7 @@ const (
 		"\x00\x00\x00\x00" +
 		"\x00\x00\x00\x00" +
 		"\x00\x00\x00\x00" +
+		"\x00\x00\x00\x00" +
 
 		// [MS-SMB2]: SMB2 NEGOTIATE_CONTEXT
 		// https://docs.microsoft.com/en-us/openspecs/windows_protocols/ms-smb2/15332256-522e-4a53-8cd7-0bd17678a2f7
@@ -94,65 +95,65 @@ const (
 		"\x00\x00\x00\x00"
 )
 
-// SmbGhost 检测SMB Ghost漏洞(CVE-2020-0796)的入口函数
+// SmbGhost detects the SMB Ghost vulnerability (CVE-2020-0796)
 func SmbGhost(info *Common.HostInfo) error {
-	// 如果开启了暴力破解模式，跳过该检测
+	// Skip detection if brute force mode is enabled
 	if Common.DisableBrute {
 		return nil
 	}
 
-	// 执行实际的SMB Ghost漏洞扫描
+	// Perform the actual SMB Ghost vulnerability scan
 	err := SmbGhostScan(info)
 	return err
 }
 
-// SmbGhostScan 执行具体的SMB Ghost漏洞检测逻辑
+// SmbGhostScan performs the actual SMB Ghost vulnerability detection logic
 func SmbGhostScan(info *Common.HostInfo) error {
-	// 设置扫描参数
+	// Set scan parameters
 	ip := info.Host
-	port := 445 // SMB服务默认端口
+	port := 445 // Default port for SMB service
 	timeout := time.Duration(Common.Timeout) * time.Second
 
-	// 构造目标地址
+	// Construct target address
 	addr := fmt.Sprintf("%s:%v", ip, port)
 
-	// 建立TCP连接
+	// Establish TCP connection
 	conn, err := Common.WrapperTcpWithTimeout("tcp", addr, timeout)
 	if err != nil {
 		return err
 	}
-	defer conn.Close() // 确保连接最终被关闭
+	defer conn.Close() // Ensure the connection is closed
 
-	// 发送SMB协议探测数据包
+	// Send SMB protocol probe packet
 	if _, err = conn.Write([]byte(pkt)); err != nil {
 		return err
 	}
 
-	// 准备接收响应
+	// Prepare to receive response
 	buff := make([]byte, 1024)
 
-	// 设置读取超时
+	// Set read timeout
 	if err = conn.SetReadDeadline(time.Now().Add(timeout)); err != nil {
 		return err
 	}
 
-	// 读取响应数据
+	// Read response data
 	n, err := conn.Read(buff)
 	if err != nil || n == 0 {
 		return err
 	}
 
-	// 分析响应数据，检测是否存在漏洞
-	// 检查条件：
-	// 1. 响应包含"Public"字符串
-	// 2. 响应长度大于等于76字节
-	// 3. 特征字节匹配 (0x11,0x03) 和 (0x02,0x00)
+	// Analyze response data to detect the vulnerability
+	// Check conditions:
+	// 1. Response contains "Public" string
+	// 2. Response length is at least 76 bytes
+	// 3. Signature bytes match (0x11,0x03) and (0x02,0x00)
 	if bytes.Contains(buff[:n], []byte("Public")) &&
 		len(buff[:n]) >= 76 &&
 		bytes.Equal(buff[72:74], []byte{0x11, 0x03}) &&
 		bytes.Equal(buff[74:76], []byte{0x02, 0x00}) {
 
-		// 发现漏洞，记录结果
+		// Vulnerability detected, log the result
 		result := fmt.Sprintf("%v CVE-2020-0796 SmbGhost Vulnerable", ip)
 		Common.LogSuccess(result)
 	}
