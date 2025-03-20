@@ -15,15 +15,15 @@ func SmbScan(info *Common.HostInfo) (tmperr error) {
 
 	target := fmt.Sprintf("%s:%s", info.Host, info.Ports)
 
-	// 遍历所有用户
+	// Iterate through all users
 	for _, user := range Common.Userdict["smb"] {
-		// 遍历该用户的所有密码
+		// Iterate through all passwords for the user
 		for _, pass := range Common.Passwords {
 			pass = strings.Replace(pass, "{user}", user, -1)
 
 			success, err := doWithTimeOut(info, user, pass)
 			if success {
-				// 构建结果消息
+				// Build result message
 				var successMsg string
 				details := map[string]interface{}{
 					"port":     info.Ports,
@@ -34,16 +34,16 @@ func SmbScan(info *Common.HostInfo) (tmperr error) {
 				}
 
 				if Common.Domain != "" {
-					successMsg = fmt.Sprintf("SMB认证成功 %s %s\\%s:%s", target, Common.Domain, user, pass)
+					successMsg = fmt.Sprintf("SMB authentication successful %s %s\\%s:%s", target, Common.Domain, user, pass)
 					details["domain"] = Common.Domain
 				} else {
-					successMsg = fmt.Sprintf("SMB认证成功 %s %s:%s", target, user, pass)
+					successMsg = fmt.Sprintf("SMB authentication successful %s %s:%s", target, user, pass)
 				}
 
-				// 记录成功日志
+				// Log success
 				Common.LogSuccess(successMsg)
 
-				// 保存结果
+				// Save result
 				result := &Common.ScanResult{
 					Time:    time.Now(),
 					Type:    Common.VULN,
@@ -56,15 +56,15 @@ func SmbScan(info *Common.HostInfo) (tmperr error) {
 			}
 
 			if err != nil {
-				errMsg := fmt.Sprintf("SMB认证失败 %s %s:%s %v", target, user, pass, err)
+				errMsg := fmt.Sprintf("SMB authentication failed %s %s:%s %v", target, user, pass, err)
 				Common.LogError(errMsg)
 
-				// 等待失败日志打印完成
+				// Wait for error log to print
 				time.Sleep(100 * time.Millisecond)
 
-				if strings.Contains(err.Error(), "账号锁定") {
-					// 账号锁定时跳过当前用户的剩余密码
-					break // 跳出密码循环，继续下一个用户
+				if strings.Contains(err.Error(), "account locked") {
+					// Skip remaining passwords for the current user if account is locked
+					break // Exit password loop, continue to next user
 				}
 			}
 		}
@@ -89,27 +89,27 @@ func SmblConn(info *Common.HostInfo, user string, pass string, signal chan struc
 		if session.IsAuthenticated {
 			return true, nil
 		}
-		return false, fmt.Errorf("认证失败")
+		return false, fmt.Errorf("authentication failed")
 	}
 
-	// 清理错误信息中的换行符和多余空格
+	// Clean up error message by removing newlines and extra spaces
 	errMsg := strings.TrimSpace(strings.ReplaceAll(err.Error(), "\n", " "))
 	if strings.Contains(errMsg, "NT Status Error") {
 		switch {
 		case strings.Contains(errMsg, "STATUS_LOGON_FAILURE"):
-			err = fmt.Errorf("密码错误")
+			err = fmt.Errorf("password incorrect")
 		case strings.Contains(errMsg, "STATUS_ACCOUNT_LOCKED_OUT"):
-			err = fmt.Errorf("账号锁定")
+			err = fmt.Errorf("account locked")
 		case strings.Contains(errMsg, "STATUS_ACCESS_DENIED"):
-			err = fmt.Errorf("拒绝访问")
+			err = fmt.Errorf("access denied")
 		case strings.Contains(errMsg, "STATUS_ACCOUNT_DISABLED"):
-			err = fmt.Errorf("账号禁用")
+			err = fmt.Errorf("account disabled")
 		case strings.Contains(errMsg, "STATUS_PASSWORD_EXPIRED"):
-			err = fmt.Errorf("密码过期")
+			err = fmt.Errorf("password expired")
 		case strings.Contains(errMsg, "STATUS_USER_SESSION_DELETED"):
-			return false, fmt.Errorf("会话断开")
+			return false, fmt.Errorf("session disconnected")
 		default:
-			err = fmt.Errorf("认证失败")
+			err = fmt.Errorf("authentication failed")
 		}
 	}
 
@@ -143,7 +143,7 @@ func doWithTimeOut(info *Common.HostInfo, user string, pass string) (flag bool, 
 		case r := <-result:
 			return r.success, r.err
 		default:
-			return false, fmt.Errorf("连接超时")
+			return false, fmt.Errorf("connection timeout")
 		}
 	}
 }

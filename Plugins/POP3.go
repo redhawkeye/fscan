@@ -18,25 +18,25 @@ func POP3Scan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
 	totalUsers := len(Common.Userdict["pop3"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting to try username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// 遍历所有用户名密码组合
+	// Iterate through all username and password combinations
 	for _, user := range Common.Userdict["pop3"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -62,13 +62,13 @@ func POP3Scan(info *Common.HostInfo) (tmperr error) {
 				case result := <-done:
 					err = result.err
 					if result.success && err == nil {
-						successMsg := fmt.Sprintf("POP3服务 %s 用户名: %v 密码: %v", target, user, pass)
+						successMsg := fmt.Sprintf("POP3 service %s Username: %v Password: %v", target, user, pass)
 						if result.isTLS {
 							successMsg += " (TLS)"
 						}
 						Common.LogSuccess(successMsg)
 
-						// 保存结果
+						// Save result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -87,11 +87,11 @@ func POP3Scan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
-					errMsg := fmt.Sprintf("POP3服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
+					errMsg := fmt.Sprintf("POP3 service %s Attempt failed Username: %v Password: %v Error: %v",
 						target, user, pass, err)
 					Common.LogError(errMsg)
 
@@ -107,7 +107,7 @@ func POP3Scan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d combinations", tried))
 	return tmperr
 }
 
@@ -115,7 +115,7 @@ func POP3Conn(info *Common.HostInfo, user string, pass string) (success bool, is
 	timeout := time.Duration(Common.Timeout) * time.Second
 	addr := fmt.Sprintf("%s:%s", info.Host, info.Ports)
 
-	// 首先尝试普通连接
+	// First try a regular connection
 	conn, err := net.DialTimeout("tcp", addr, timeout)
 	if err == nil {
 		if flag, err := tryPOP3Auth(conn, user, pass, timeout); err == nil {
@@ -124,13 +124,13 @@ func POP3Conn(info *Common.HostInfo, user string, pass string) (success bool, is
 		conn.Close()
 	}
 
-	// 如果普通连接失败，尝试TLS连接
+	// If regular connection fails, try TLS connection
 	tlsConfig := &tls.Config{
 		InsecureSkipVerify: true,
 	}
 	conn, err = tls.DialWithDialer(&net.Dialer{Timeout: timeout}, "tcp", addr, tlsConfig)
 	if err != nil {
-		return false, false, fmt.Errorf("连接失败: %v", err)
+		return false, false, fmt.Errorf("Connection failed: %v", err)
 	}
 	defer conn.Close()
 
@@ -142,46 +142,46 @@ func tryPOP3Auth(conn net.Conn, user string, pass string, timeout time.Duration)
 	reader := bufio.NewReader(conn)
 	conn.SetDeadline(time.Now().Add(timeout))
 
-	// 读取欢迎信息
+	// Read welcome message
 	_, err := reader.ReadString('\n')
 	if err != nil {
-		return false, fmt.Errorf("读取欢迎消息失败: %v", err)
+		return false, fmt.Errorf("Failed to read welcome message: %v", err)
 	}
 
-	// 发送用户名
+	// Send username
 	conn.SetDeadline(time.Now().Add(timeout))
 	_, err = conn.Write([]byte(fmt.Sprintf("USER %s\r\n", user)))
 	if err != nil {
-		return false, fmt.Errorf("发送用户名失败: %v", err)
+		return false, fmt.Errorf("Failed to send username: %v", err)
 	}
 
-	// 读取用户名响应
+	// Read username response
 	conn.SetDeadline(time.Now().Add(timeout))
 	response, err := reader.ReadString('\n')
 	if err != nil {
-		return false, fmt.Errorf("读取用户名响应失败: %v", err)
+		return false, fmt.Errorf("Failed to read username response: %v", err)
 	}
 	if !strings.Contains(response, "+OK") {
-		return false, fmt.Errorf("用户名无效")
+		return false, fmt.Errorf("Invalid username")
 	}
 
-	// 发送密码
+	// Send password
 	conn.SetDeadline(time.Now().Add(timeout))
 	_, err = conn.Write([]byte(fmt.Sprintf("PASS %s\r\n", pass)))
 	if err != nil {
-		return false, fmt.Errorf("发送密码失败: %v", err)
+		return false, fmt.Errorf("Failed to send password: %v", err)
 	}
 
-	// 读取密码响应
+	// Read password response
 	conn.SetDeadline(time.Now().Add(timeout))
 	response, err = reader.ReadString('\n')
 	if err != nil {
-		return false, fmt.Errorf("读取密码响应失败: %v", err)
+		return false, fmt.Errorf("Failed to read password response: %v", err)
 	}
 
 	if strings.Contains(response, "+OK") {
 		return true, nil
 	}
 
-	return false, fmt.Errorf("认证失败")
+	return false, fmt.Errorf("Authentication failed")
 }
