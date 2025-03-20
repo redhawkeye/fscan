@@ -22,13 +22,13 @@ import (
 	"time"
 )
 
-// Brutelist 表示暴力破解的用户名密码组合
+// Brutelist represents a list of username and password combinations for brute force attacks
 type Brutelist struct {
 	user string
 	pass string
 }
 
-// RdpScan 执行RDP服务扫描
+// RdpScan performs a scan on RDP service
 func RdpScan(info *Common.HostInfo) (tmperr error) {
 	defer func() {
 		recover()
@@ -42,17 +42,17 @@ func RdpScan(info *Common.HostInfo) (tmperr error) {
 	num := 0
 	target := fmt.Sprintf("%v:%v", info.Host, port)
 
-	// 遍历用户名密码组合
+	// Iterate through username and password combinations
 	for _, user := range Common.Userdict["rdp"] {
 		for _, pass := range Common.Passwords {
 			num++
 			pass = strings.Replace(pass, "{user}", user, -1)
 
-			// 尝试连接
+			// Attempt connection
 			flag, err := RdpConn(info.Host, Common.Domain, user, pass, port, Common.Timeout)
 
 			if flag && err == nil {
-				// 连接成功
+				// Connection successful
 				var result string
 				if Common.Domain != "" {
 					result = fmt.Sprintf("RDP %v Domain: %v\\%v Password: %v", target, Common.Domain, user, pass)
@@ -61,7 +61,7 @@ func RdpScan(info *Common.HostInfo) (tmperr error) {
 				}
 				Common.LogSuccess(result)
 
-				// 保存结果
+				// Save result
 				details := map[string]interface{}{
 					"port":     port,
 					"service":  "rdp",
@@ -85,7 +85,7 @@ func RdpScan(info *Common.HostInfo) (tmperr error) {
 				return nil
 			}
 
-			// 连接失败
+			// Connection failed
 			errlog := fmt.Sprintf("(%v/%v) RDP %v Username: %v Password: %v Error: %v",
 				num, total, target, user, pass, err)
 			Common.LogError(errlog)
@@ -95,14 +95,14 @@ func RdpScan(info *Common.HostInfo) (tmperr error) {
 	return tmperr
 }
 
-// RdpConn 尝试RDP连接
+// RdpConn attempts to connect to RDP
 func RdpConn(ip, domain, user, password string, port int, timeout int64) (bool, error) {
 	defer func() {
 		recover()
 	}()
 	target := fmt.Sprintf("%s:%d", ip, port)
 
-	// 创建RDP客户端
+	// Create RDP client
 	client := NewClient(target, glog.NONE)
 	if err := client.Login(domain, user, password, timeout); err != nil {
 		return false, err
@@ -111,20 +111,20 @@ func RdpConn(ip, domain, user, password string, port int, timeout int64) (bool, 
 	return true, nil
 }
 
-// Client RDP客户端结构
+// Client represents an RDP client
 type Client struct {
-	Host string          // 服务地址(ip:port)
-	tpkt *tpkt.TPKT      // TPKT协议层
-	x224 *x224.X224      // X224协议层
-	mcs  *t125.MCSClient // MCS协议层
-	sec  *sec.Client     // 安全层
-	pdu  *pdu.Client     // PDU协议层
-	vnc  *rfb.RFB        // VNC协议(可选)
+	Host string          // Server address (ip:port)
+	tpkt *tpkt.TPKT      // TPKT protocol layer
+	x224 *x224.X224      // X224 protocol layer
+	mcs  *t125.MCSClient // MCS protocol layer
+	sec  *sec.Client     // Security layer
+	pdu  *pdu.Client     // PDU protocol layer
+	vnc  *rfb.RFB        // VNC protocol (optional)
 }
 
-// NewClient 创建新的RDP客户端
+// NewClient creates a new RDP client
 func NewClient(host string, logLevel glog.LEVEL) *Client {
-	// 配置日志
+	// Configure logging
 	glog.SetLevel(logLevel)
 	logger := log.New(os.Stdout, "", 0)
 	glog.SetLogger(logger)
@@ -134,92 +134,92 @@ func NewClient(host string, logLevel glog.LEVEL) *Client {
 	}
 }
 
-// Login 执行RDP登录
+// Login performs RDP login
 func (g *Client) Login(domain, user, pwd string, timeout int64) error {
-	// 建立TCP连接
+	// Establish TCP connection
 	conn, err := Common.WrapperTcpWithTimeout("tcp", g.Host, time.Duration(timeout)*time.Second)
 	if err != nil {
-		return fmt.Errorf("[连接错误] %v", err)
+		return fmt.Errorf("[Connection error] %v", err)
 	}
 	defer conn.Close()
 	glog.Info(conn.LocalAddr().String())
 
-	// 初始化协议栈
+	// Initialize protocol stack
 	g.initProtocolStack(conn, domain, user, pwd)
 
-	// 建立X224连接
+	// Establish X224 connection
 	if err = g.x224.Connect(); err != nil {
-		return fmt.Errorf("[X224连接错误] %v", err)
+		return fmt.Errorf("[X224 connection error] %v", err)
 	}
-	glog.Info("等待连接建立...")
+	glog.Info("Waiting for connection to be established...")
 
-	// 等待连接完成
+	// Wait for connection to complete
 	wg := &sync.WaitGroup{}
 	breakFlag := false
 	wg.Add(1)
 
-	// 设置事件处理器
+	// Set event handlers
 	g.setupEventHandlers(wg, &breakFlag, &err)
 
 	wg.Wait()
 	return err
 }
 
-// initProtocolStack 初始化RDP协议栈
+// initProtocolStack initializes the RDP protocol stack
 func (g *Client) initProtocolStack(conn net.Conn, domain, user, pwd string) {
-	// 创建协议层实例
+	// Create protocol layer instances
 	g.tpkt = tpkt.New(core.NewSocketLayer(conn), nla.NewNTLMv2(domain, user, pwd))
 	g.x224 = x224.New(g.tpkt)
 	g.mcs = t125.NewMCSClient(g.x224)
 	g.sec = sec.NewClient(g.mcs)
 	g.pdu = pdu.NewClient(g.sec)
 
-	// 设置认证信息
+	// Set authentication information
 	g.sec.SetUser(user)
 	g.sec.SetPwd(pwd)
 	g.sec.SetDomain(domain)
 
-	// 配置协议层关联
+	// Configure protocol layer associations
 	g.tpkt.SetFastPathListener(g.sec)
 	g.sec.SetFastPathListener(g.pdu)
 	g.pdu.SetFastPathSender(g.tpkt)
 }
 
-// setupEventHandlers 设置PDU事件处理器
+// setupEventHandlers sets up PDU event handlers
 func (g *Client) setupEventHandlers(wg *sync.WaitGroup, breakFlag *bool, err *error) {
-	// 错误处理
+	// Error handling
 	g.pdu.On("error", func(e error) {
 		*err = e
-		glog.Error("错误:", e)
+		glog.Error("Error:", e)
 		g.pdu.Emit("done")
 	})
 
-	// 连接关闭
+	// Connection closed
 	g.pdu.On("close", func() {
-		*err = errors.New("连接关闭")
-		glog.Info("连接已关闭")
+		*err = errors.New("Connection closed")
+		glog.Info("Connection closed")
 		g.pdu.Emit("done")
 	})
 
-	// 连接成功
+	// Connection successful
 	g.pdu.On("success", func() {
 		*err = nil
-		glog.Info("连接成功")
+		glog.Info("Connection successful")
 		g.pdu.Emit("done")
 	})
 
-	// 连接就绪
+	// Connection ready
 	g.pdu.On("ready", func() {
-		glog.Info("连接就绪")
+		glog.Info("Connection ready")
 		g.pdu.Emit("done")
 	})
 
-	// 屏幕更新
+	// Screen update
 	g.pdu.On("update", func(rectangles []pdu.BitmapData) {
-		glog.Info("屏幕更新:", rectangles)
+		glog.Info("Screen update:", rectangles)
 	})
 
-	// 完成处理
+	// Completion handling
 	g.pdu.On("done", func() {
 		if !*breakFlag {
 			*breakFlag = true

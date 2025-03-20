@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// SmtpScan 执行 SMTP 服务扫描
+// SmtpScan performs a scan on SMTP service
 func SmtpScan(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return
@@ -18,17 +18,17 @@ func SmtpScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
-	Common.LogDebug("尝试匿名访问...")
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
+	Common.LogDebug("Trying anonymous access...")
 
-	// 先测试匿名访问
+	// First, test anonymous access
 	for retryCount := 0; retryCount < maxRetries; retryCount++ {
 		flag, err := SmtpConn(info, "", "")
 		if flag && err == nil {
-			msg := fmt.Sprintf("SMTP服务 %s 允许匿名访问", target)
+			msg := fmt.Sprintf("SMTP service %s allows anonymous access", target)
 			Common.LogSuccess(msg)
 
-			// 保存匿名访问结果
+			// Save anonymous access result
 			result := &Common.ScanResult{
 				Time:   time.Now(),
 				Type:   Common.VULN,
@@ -60,22 +60,22 @@ func SmtpScan(info *Common.HostInfo) (tmperr error) {
 
 	totalUsers := len(Common.Userdict["smtp"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting to try username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// 遍历所有用户名密码组合
+	// Iterate through all username and password combinations
 	for _, user := range Common.Userdict["smtp"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				done := make(chan struct {
@@ -99,10 +99,10 @@ func SmtpScan(info *Common.HostInfo) (tmperr error) {
 				case result := <-done:
 					err = result.err
 					if result.success && err == nil {
-						msg := fmt.Sprintf("SMTP服务 %s 爆破成功 用户名: %v 密码: %v", target, user, pass)
+						msg := fmt.Sprintf("SMTP service %s brute force successful Username: %v Password: %v", target, user, pass)
 						Common.LogSuccess(msg)
 
-						// 保存成功爆破结果
+						// Save successful brute force result
 						vulnResult := &Common.ScanResult{
 							Time:   time.Now(),
 							Type:   Common.VULN,
@@ -120,11 +120,11 @@ func SmtpScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				if err != nil {
-					errlog := fmt.Sprintf("SMTP服务 %s 尝试失败 用户名: %v 密码: %v 错误: %v",
+					errlog := fmt.Sprintf("SMTP service %s attempt failed Username: %v Password: %v Error: %v",
 						target, user, pass, err)
 					Common.LogError(errlog)
 
@@ -140,11 +140,11 @@ func SmtpScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d combinations", tried))
 	return tmperr
 }
 
-// SmtpConn 尝试 SMTP 连接
+// SmtpConn attempts SMTP connection
 func SmtpConn(info *Common.HostInfo, user string, pass string) (bool, error) {
 	host, port := info.Host, info.Ports
 	timeout := time.Duration(Common.Timeout) * time.Second
