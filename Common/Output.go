@@ -11,10 +11,10 @@ import (
 	"time"
 )
 
-// 全局输出管理器
+// Global output manager
 var ResultOutput *OutputManager
 
-// OutputManager 输出管理器结构体
+// OutputManager structure for managing output
 type OutputManager struct {
 	mu            sync.Mutex
 	outputPath    string
@@ -25,38 +25,38 @@ type OutputManager struct {
 	isInitialized bool
 }
 
-// ResultType 定义结果类型
+// ResultType defines the type of result
 type ResultType string
 
 const (
-	HOST    ResultType = "HOST"    // 主机存活
-	PORT    ResultType = "PORT"    // 端口开放
-	SERVICE ResultType = "SERVICE" // 服务识别
-	VULN    ResultType = "VULN"    // 漏洞发现
+	HOST    ResultType = "HOST"    // Host alive
+	PORT    ResultType = "PORT"    // Port open
+	SERVICE ResultType = "SERVICE" // Service identified
+	VULN    ResultType = "VULN"    // Vulnerability found
 )
 
-// ScanResult 扫描结果结构
+// ScanResult structure for scan results
 type ScanResult struct {
-	Time    time.Time              `json:"time"`    // 发现时间
-	Type    ResultType             `json:"type"`    // 结果类型
-	Target  string                 `json:"target"`  // 目标(IP/域名/URL)
-	Status  string                 `json:"status"`  // 状态描述
-	Details map[string]interface{} `json:"details"` // 详细信息
+	Time    time.Time              `json:"time"`    // Time of discovery
+	Type    ResultType             `json:"type"`    // Type of result
+	Target  string                 `json:"target"`  // Target (IP/domain/URL)
+	Status  string                 `json:"status"`  // Status description
+	Details map[string]interface{} `json:"details"` // Detailed information
 }
 
-// InitOutput 初始化输出系统
+// InitOutput initializes the output system
 func InitOutput() error {
 	LogDebug(GetText("output_init_start"))
 
-	// 验证输出格式
+	// Validate output format
 	switch OutputFormat {
 	case "txt", "json", "csv":
-		// 有效的格式
+		// Valid formats
 	default:
 		return fmt.Errorf(GetText("output_format_invalid"), OutputFormat)
 	}
 
-	// 验证输出路径
+	// Validate output path
 	if Outputfile == "" {
 		return fmt.Errorf(GetText("output_path_empty"))
 	}
@@ -125,7 +125,7 @@ func (om *OutputManager) initialize() error {
 	return nil
 }
 
-// SaveResult 保存扫描结果
+// SaveResult saves the scan result
 func SaveResult(result *ScanResult) error {
 	if ResultOutput == nil {
 		LogDebug(GetText("output_not_init"))
@@ -167,7 +167,7 @@ func (om *OutputManager) saveResult(result *ScanResult) error {
 }
 
 func (om *OutputManager) writeTxt(result *ScanResult) error {
-	// 格式化 Details 为键值对字符串
+	// Format Details as key-value string
 	var details string
 	if len(result.Details) > 0 {
 		pairs := make([]string, 0, len(result.Details))
@@ -213,7 +213,7 @@ func (om *OutputManager) writeCsv(result *ScanResult) error {
 	return om.csvWriter.Error()
 }
 
-// CloseOutput 关闭输出系统
+// CloseOutput closes the output system
 func CloseOutput() error {
 	if ResultOutput == nil {
 		LogDebug(GetText("output_no_need_close"))

@@ -19,29 +19,29 @@ func Parse(Info *HostInfo) error {
 	return nil
 }
 
-// ParseUser 解析用户名配置
+// ParseUser parses the username configuration
 func ParseUser() error {
-	// 如果未指定用户名和用户名文件,直接返回
+	// If no username and username file are specified, return directly
 	if Username == "" && UsersFile == "" {
 		return nil
 	}
 
 	var usernames []string
 
-	// 处理直接指定的用户名列表
+	// Handle directly specified username list
 	if Username != "" {
 		usernames = strings.Split(Username, ",")
 		LogInfo(GetText("no_username_specified", len(usernames)))
 	}
 
-	// 从文件加载用户名列表
+	// Load username list from file
 	if UsersFile != "" {
 		users, err := Readfile(UsersFile)
 		if err != nil {
-			return fmt.Errorf("读取用户名文件失败: %v", err)
+			return fmt.Errorf("Failed to read username file: %v", err)
 		}
 
-		// 过滤空用户名
+		// Filter out empty usernames
 		for _, user := range users {
 			if user != "" {
 				usernames = append(usernames, user)
@@ -50,11 +50,11 @@ func ParseUser() error {
 		LogInfo(GetText("load_usernames_from_file", len(users)))
 	}
 
-	// 去重处理
+	// Remove duplicates
 	usernames = RemoveDuplicate(usernames)
 	LogInfo(GetText("total_usernames", len(usernames)))
 
-	// 更新用户字典
+	// Update user dictionary
 	for name := range Userdict {
 		Userdict[name] = usernames
 	}
@@ -62,9 +62,9 @@ func ParseUser() error {
 	return nil
 }
 
-// ParsePass 解析密码、哈希值、URL和端口配置
+// ParsePass parses passwords, hashes, URLs, and port configurations
 func ParsePass(Info *HostInfo) error {
-	// 处理直接指定的密码列表
+	// Handle directly specified password list
 	var pwdList []string
 	if Password != "" {
 		passes := strings.Split(Password, ",")
@@ -77,26 +77,26 @@ func ParsePass(Info *HostInfo) error {
 		LogInfo(GetText("load_passwords", len(pwdList)))
 	}
 
-	// 从文件加载密码列表
+	// Load password list from file
 	if PasswordsFile != "" {
 		passes, err := Readfile(PasswordsFile)
 		if err != nil {
-			return fmt.Errorf("读取密码文件失败: %v", err)
+			return fmt.Errorf("Failed to read password file: %v", err)
 		}
 		for _, pass := range passes {
 			if pass != "" {
 				pwdList = append(pwdList, pass)
 			}
+			Passwords = pwdList
 		}
-		Passwords = pwdList
 		LogInfo(GetText("load_passwords_from_file", len(passes)))
 	}
 
-	// 处理哈希文件
+	// Handle hash file
 	if HashFile != "" {
 		hashes, err := Readfile(HashFile)
 		if err != nil {
-			return fmt.Errorf("读取哈希文件失败: %v", err)
+			return fmt.Errorf("Failed to read hash file: %v", err)
 		}
 
 		validCount := 0
@@ -114,7 +114,7 @@ func ParsePass(Info *HostInfo) error {
 		LogInfo(GetText("load_valid_hashes", validCount))
 	}
 
-	// 处理直接指定的URL列表
+	// Handle directly specified URL list
 	if TargetURL != "" {
 		urls := strings.Split(TargetURL, ",")
 		tmpUrls := make(map[string]struct{})
@@ -129,11 +129,11 @@ func ParsePass(Info *HostInfo) error {
 		LogInfo(GetText("load_urls", len(URLs)))
 	}
 
-	// 从文件加载URL列表
+	// Load URL list from file
 	if URLsFile != "" {
 		urls, err := Readfile(URLsFile)
 		if err != nil {
-			return fmt.Errorf("读取URL文件失败: %v", err)
+			return fmt.Errorf("Failed to read URL file: %v", err)
 		}
 
 		tmpUrls := make(map[string]struct{})
@@ -148,11 +148,11 @@ func ParsePass(Info *HostInfo) error {
 		LogInfo(GetText("load_urls_from_file", len(urls)))
 	}
 
-	// 从文件加载主机列表
+	// Load host list from file
 	if HostsFile != "" {
 		hosts, err := Readfile(HostsFile)
 		if err != nil {
-			return fmt.Errorf("读取主机文件失败: %v", err)
+			return fmt.Errorf("Failed to read host file: %v", err)
 		}
 
 		tmpHosts := make(map[string]struct{})
@@ -171,11 +171,11 @@ func ParsePass(Info *HostInfo) error {
 		LogInfo(GetText("load_hosts_from_file", len(hosts)))
 	}
 
-	// 从文件加载端口列表
+	// Load port list from file
 	if PortsFile != "" {
 		ports, err := Readfile(PortsFile)
 		if err != nil {
-			return fmt.Errorf("读取端口文件失败: %v", err)
+			return fmt.Errorf("Failed to read port file: %v", err)
 		}
 
 		var newport strings.Builder
@@ -192,9 +192,9 @@ func ParsePass(Info *HostInfo) error {
 	return nil
 }
 
-// Readfile 读取文件内容并返回非空行的切片
+// Readfile reads the content of a file and returns a slice of non-empty lines
 func Readfile(filename string) ([]string, error) {
-	// 打开文件
+	// Open the file
 	file, err := os.Open(filename)
 	if err != nil {
 		LogError(GetText("open_file_failed", filename, err))
@@ -206,7 +206,7 @@ func Readfile(filename string) ([]string, error) {
 	scanner := bufio.NewScanner(file)
 	scanner.Split(bufio.ScanLines)
 
-	// 逐行读取文件内容
+	// Read the file line by line
 	lineCount := 0
 	for scanner.Scan() {
 		text := strings.TrimSpace(scanner.Text())
@@ -216,7 +216,7 @@ func Readfile(filename string) ([]string, error) {
 		}
 	}
 
-	// 检查扫描过程中是否有错误
+	// Check for errors during scanning
 	if err := scanner.Err(); err != nil {
 		LogError(GetText("read_file_failed", filename, err))
 		return nil, err
@@ -226,9 +226,9 @@ func Readfile(filename string) ([]string, error) {
 	return content, nil
 }
 
-// ParseInput 解析和验证输入参数配置
+// ParseInput parses and validates input parameter configurations
 func ParseInput(Info *HostInfo) error {
-	// 检查互斥的扫描模式
+	// Check for mutually exclusive scan modes
 	modes := 0
 	if Info.Host != "" || HostsFile != "" {
 		modes++
@@ -241,20 +241,20 @@ func ParseInput(Info *HostInfo) error {
 	}
 
 	if modes == 0 {
-		// 无参数时显示帮助
+		// Show help when no parameters are provided
 		flag.Usage()
 		return fmt.Errorf(GetText("specify_scan_params"))
 	} else if modes > 1 {
 		return fmt.Errorf(GetText("params_conflict"))
 	}
 
-	// 处理爆破线程配置
+	// Handle brute force thread configuration
 	if BruteThreads <= 0 {
 		BruteThreads = 1
 		LogInfo(GetText("brute_threads", BruteThreads))
 	}
 
-	// 处理端口配置
+	// Handle port configuration
 	if Ports == MainPorts {
 		Ports += "," + WebPorts
 	}
@@ -268,7 +268,7 @@ func ParseInput(Info *HostInfo) error {
 		LogInfo(GetText("extra_ports", AddPorts))
 	}
 
-	// 处理用户名配置
+	// Handle username configuration
 	if AddUsers != "" {
 		users := strings.Split(AddUsers, ",")
 		for dict := range Userdict {
@@ -278,7 +278,7 @@ func ParseInput(Info *HostInfo) error {
 		LogInfo(GetText("extra_usernames", AddUsers))
 	}
 
-	// 处理密码配置
+	// Handle password configuration
 	if AddPasswords != "" {
 		passes := strings.Split(AddPasswords, ",")
 		Passwords = append(Passwords, passes...)
@@ -286,7 +286,7 @@ func ParseInput(Info *HostInfo) error {
 		LogInfo(GetText("extra_passwords", AddPasswords))
 	}
 
-	// 处理Socks5代理配置
+	// Handle Socks5 proxy configuration
 	if Socks5Proxy != "" {
 		if !strings.HasPrefix(Socks5Proxy, "socks5://") {
 			if !strings.Contains(Socks5Proxy, ":") {
@@ -304,7 +304,7 @@ func ParseInput(Info *HostInfo) error {
 		LogInfo(GetText("socks5_proxy", Socks5Proxy))
 	}
 
-	// 处理HTTP代理配置
+	// Handle HTTP proxy configuration
 	if HttpProxy != "" {
 		switch HttpProxy {
 		case "1":
@@ -328,7 +328,7 @@ func ParseInput(Info *HostInfo) error {
 		LogInfo(GetText("http_proxy", HttpProxy))
 	}
 
-	// 处理Hash配置
+	// Handle Hash configuration
 	if HashValue != "" {
 		if len(HashValue) != 32 {
 			return fmt.Errorf(GetText("hash_length_error"))
@@ -336,7 +336,7 @@ func ParseInput(Info *HostInfo) error {
 		HashValues = append(HashValues, HashValue)
 	}
 
-	// 处理Hash列表
+	// Handle Hash list
 	HashValues = RemoveDuplicate(HashValues)
 	for _, hash := range HashValues {
 		hashByte, err := hex.DecodeString(hash)

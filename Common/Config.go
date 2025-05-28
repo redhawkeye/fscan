@@ -848,14 +848,14 @@ var PortMap = map[int][]string{
 var Passwords = []string{"123456", "admin", "admin123", "root", "", "pass123", "pass@123", "password", "Password", "P@ssword123", "123123", "654321", "111111", "123", "1", "admin@123", "Admin@123", "admin123!@#", "{user}", "{user}1", "{user}111", "{user}123", "{user}@123", "{user}_123", "{user}#123", "{user}@111", "{user}@2019", "{user}@123#4", "P@ssw0rd!", "P@ssw0rd", "Passw0rd", "qwe123", "12345678", "test", "test123", "123qwe", "123qwe!@#", "123456789", "123321", "666666", "a123456.", "123456~a", "123456!a", "000000", "1234567890", "8888888", "!QAZ2wsx", "1qaz2wsx", "abc123", "abc123456", "1qaz@WSX", "a11111", "a12345", "Aa1234", "Aa1234.", "Aa12345", "a123456", "a123123", "Aa123123", "Aa123456", "Aa12345.", "sysadmin", "system", "1qaz!QAZ", "2wsx@WSX", "qwe123!@#", "Aa123456!", "A123456s!", "sa123456", "1q2w3e", "Charge123", "Aa123456789", "elastic123"}
 
 var (
-	Outputfile   string // 输出文件路径
-	OutputFormat string // 输出格式
+	Outputfile   string // Output file path
+	OutputFormat string // Output format
 )
 
-// 添加一个全局的进度条变量
+// Add a global progress bar variable
 var ProgressBar *progressbar.ProgressBar
 
-// 添加一个全局互斥锁来控制输出
+// Add a global mutex to control output
 var OutputMutex sync.Mutex
 
 type PocInfo struct {
@@ -864,81 +864,80 @@ type PocInfo struct {
 }
 
 var (
-	// 目标配置
+	// Target configuration
 	Ports        string
-	ExcludePorts string // 原NoPorts
+	ExcludePorts string // Original NoPorts
 	ExcludeHosts string
-	AddPorts     string // 原PortAdd
+	AddPorts     string // Original PortAdd
 
-	// 认证配置
+	// Authentication configuration
 	Username     string
 	Password     string
 	Domain       string
-	SshKeyPath   string // 原SshKey
-	AddUsers     string // 原UserAdd
-	AddPasswords string // 原PassAdd
+	SshKeyPath   string // Original SshKey
+	AddUsers     string // Original UserAdd
+	AddPasswords string // Original PassAdd
 
-	// 扫描配置
-	ScanMode  string // 原Scantype
-	ThreadNum int    // 原Threads
-	//UseSynScan      bool
+	// Scan configuration
+	ScanMode  string // Original Scantype
+	ThreadNum int    // Original Threads
 	Timeout         int64 = 3
 	LiveTop         int
-	DisablePing     bool // 原NoPing
-	UsePing         bool // 原Ping
+	DisablePing     bool // Original NoPing
+	UsePing         bool // Original Ping
 	Command         string
 	SkipFingerprint bool
 
-	// 文件配置
-	HostsFile     string // 原HostFile
-	UsersFile     string // 原Userfile
-	PasswordsFile string // 原Passfile
-	HashFile      string // 原Hashfile
-	PortsFile     string // 原PortFile
+	// File configuration
+	HostsFile     string // Original HostFile
+	UsersFile     string // Original Userfile
+	PasswordsFile string // Original Passfile
+	HashFile      string // Original Hashfile
+	PortsFile     string // Original PortFile
 
-	// Web配置
-	TargetURL   string   // 原URL
-	URLsFile    string   // 原UrlFile
-	URLs        []string // 原Urls
+	// Web configuration
+	TargetURL   string   // Original URL
+	URLsFile    string   // Original UrlFile
+	URLs        []string // Original Urls
 	WebTimeout  int64    = 5
-	HttpProxy   string   // 原Proxy
+	HttpProxy   string   // Original Proxy
 	Socks5Proxy string
 
-	LocalMode bool // -local 本地模式
+	LocalMode bool // -local Local mode
 
-	// POC配置
+	// POC configuration
 	DisablePocScan bool //nopoc
 	PocPath        string
 	Pocinfo        PocInfo
 
-	// Redis配置
+	// Redis configuration
 	RedisFile    string
 	RedisShell   string
-	DisableRedis bool // 原Noredistest
+	DisableRedis bool // Original Noredistest
 
-	// 爆破配置
-	DisableBrute bool // 原IsBrute
-	BruteThreads int  // 原BruteThread
-	MaxRetries   int  // 最大重试次数
+	// Brute force configuration
+	DisableBrute bool // Original IsBrute
+	BruteThreads int  // Original BruteThread
+	MaxRetries   int  // Maximum retry times
 
-	// 其他配置
-	RemotePath string   // 原Path
-	HashValue  string   // 原Hash
-	HashValues []string // 原Hashs
+	// Other configuration
+	RemotePath string   // Original Path
+	HashValue  string   // Original Hash
+	HashValues []string // Original Hashs
 	HashBytes  [][]byte
 	HostPort   []string
-	Shellcode  string // 原SC
-	EnableWmi  bool   // 原IsWmi
+	Shellcode  string // Original SC
+	EnableWmi  bool   // Original IsWmi
 
-	// 输出配置
-	DisableSave  bool   // 禁止保存结果
-	Silent       bool   // 静默模式
-	NoColor      bool   // 禁用彩色输出
-	JsonFormat   bool   // JSON格式输出
-	LogLevel     string // 日志输出级别
-	ShowProgress bool   // 是否显示进度条
+	// Output configuration
+	DisableSave  bool   // Disable result saving
+	Silent       bool   // Silent mode
+	NoColor      bool   // Disable color output
+	JsonFormat   bool   // JSON format output
+	LogLevel     string // Log output level
+	ShowProgress bool   // Show progress bar
 
-	Language string // 语言
+	Language string // Language
 )
 
 var (

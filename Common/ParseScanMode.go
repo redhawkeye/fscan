@@ -1,27 +1,27 @@
 package Common
 
-// 扫描模式常量 - 使用大写开头表示这是一个预设的扫描模式
+// Scan mode constants - Using uppercase to indicate this is a preset scan mode
 const (
-	ModeAll      = "All"      // 全量扫描
-	ModeBasic    = "Basic"    // 基础扫描
-	ModeDatabase = "Database" // 数据库扫描
-	ModeWeb      = "Web"      // Web扫描
-	ModeService  = "Service"  // 服务扫描
-	ModeVul      = "Vul"      // 漏洞扫描
-	ModePort     = "Port"     // 端口扫描
-	ModeICMP     = "ICMP"     // ICMP探测
-	ModeLocal    = "Local"    // 本地信息收集
+	ModeAll      = "All"      // Full scan
+	ModeBasic    = "Basic"    // Basic scan
+	ModeDatabase = "Database" // Database scan
+	ModeWeb      = "Web"      // Web scan
+	ModeService  = "Service"  // Service scan
+	ModeVul      = "Vul"      // Vulnerability scan
+	ModePort     = "Port"     // Port scan
+	ModeICMP     = "ICMP"     // ICMP probe
+	ModeLocal    = "Local"    // Local information gathering
 )
 
-// 插件分类映射表 - 所有插件名使用小写
+// Plugin category mapping table - All plugin names use lowercase
 var PluginGroups = map[string][]string{
 	ModeAll: {
-		"webtitle", "webpoc", // web类
-		"mysql", "mssql", "redis", "mongodb", "postgres", // 数据库类
-		"oracle", "memcached", "elasticsearch", "rabbitmq", "kafka", "activemq", "cassandra", "neo4j", // 数据库类
-		"ftp", "ssh", "telnet", "smb", "rdp", "vnc", "netbios", "ldap", "smtp", "imap", "pop3", "snmp", "modbus", "rsync", // 服务类
-		"ms17010", "smbghost", "smb2", // 漏洞类
-		"findnet", // 其他
+		"webtitle", "webpoc", // web category
+		"mysql", "mssql", "redis", "mongodb", "postgres", // database category
+		"oracle", "memcached", "elasticsearch", "rabbitmq", "kafka", "activemq", "cassandra", "neo4j", // database category
+		"ftp", "ssh", "telnet", "smb", "rdp", "vnc", "netbios", "ldap", "smtp", "imap", "pop3", "snmp", "modbus", "rsync", // service category
+		"ms17010", "smbghost", "smb2", // vulnerability category
+		"findnet", // other
 	},
 	ModeBasic: {
 		"webtitle", "ftp", "ssh", "smb", "findnet",
@@ -44,11 +44,11 @@ var PluginGroups = map[string][]string{
 	},
 }
 
-// ParseScanMode 解析扫描模式
+// ParseScanMode parses the scan mode
 func ParseScanMode(mode string) {
 	LogInfo(GetText("parse_scan_mode", mode))
 
-	// 检查是否是预设模式
+	// Check if it is a preset mode
 	presetModes := []string{
 		ModeAll, ModeBasic, ModeDatabase, ModeWeb,
 		ModeService, ModeVul, ModePort, ModeICMP, ModeLocal,
@@ -66,20 +66,20 @@ func ParseScanMode(mode string) {
 		}
 	}
 
-	// 检查是否是有效的插件名
+	// Check if it is a valid plugin name
 	if _, exists := PluginManager[mode]; exists {
 		ScanMode = mode
 		LogInfo(GetText("using_single_plugin", mode))
 		return
 	}
 
-	// 默认使用All模式
+	// Default to All mode
 	ScanMode = ModeAll
 	LogInfo(GetText("using_default_mode", ModeAll))
 	LogInfo(GetText("included_plugins", PluginGroups[ModeAll]))
 }
 
-// GetPluginsForMode 获取指定模式下的插件列表
+// GetPluginsForMode retrieves the list of plugins for the specified mode
 func GetPluginsForMode(mode string) []string {
 	plugins, exists := PluginGroups[mode]
 	if exists {
@@ -88,7 +88,7 @@ func GetPluginsForMode(mode string) []string {
 	return nil
 }
 
-// 辅助函数
+// Helper functions
 func IsPortScan() bool    { return ScanMode == ModePort }
 func IsICMPScan() bool    { return ScanMode == ModeICMP }
 func IsWebScan() bool     { return ScanMode == ModeWeb }

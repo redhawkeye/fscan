@@ -10,15 +10,15 @@ import (
 	"time"
 )
 
-// WrapperTcpWithTimeout 创建一个带超时的TCP连接
+// WrapperTcpWithTimeout creates a TCP connection with a timeout
 func WrapperTcpWithTimeout(network, address string, timeout time.Duration) (net.Conn, error) {
 	d := &net.Dialer{Timeout: timeout}
 	return WrapperTCP(network, address, d)
 }
 
-// WrapperTCP 根据配置创建TCP连接
+// WrapperTCP creates a TCP connection based on the configuration
 func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) {
-	// 直连模式
+	// Direct connection mode
 	if Socks5Proxy == "" {
 		conn, err := forward.Dial(network, address)
 		if err != nil {
@@ -27,7 +27,7 @@ func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) 
 		return conn, nil
 	}
 
-	// Socks5代理模式
+	// Socks5 proxy mode
 	dialer, err := Socks5Dialer(forward)
 	if err != nil {
 		return nil, fmt.Errorf(GetText("socks5_create_failed"), err)
@@ -41,15 +41,15 @@ func WrapperTCP(network, address string, forward *net.Dialer) (net.Conn, error) 
 	return conn, nil
 }
 
-// Socks5Dialer 创建Socks5代理拨号器
+// Socks5Dialer creates a Socks5 proxy dialer
 func Socks5Dialer(forward *net.Dialer) (proxy.Dialer, error) {
-	// 解析代理URL
+	// Parse proxy URL
 	u, err := url.Parse(Socks5Proxy)
 	if err != nil {
 		return nil, fmt.Errorf(GetText("socks5_parse_failed"), err)
 	}
 
-	// 验证代理类型
+	// Validate proxy type
 	if strings.ToLower(u.Scheme) != "socks5" {
 		return nil, errors.New(GetText("socks5_only"))
 	}
@@ -57,16 +57,16 @@ func Socks5Dialer(forward *net.Dialer) (proxy.Dialer, error) {
 	address := u.Host
 	var dialer proxy.Dialer
 
-	// 根据认证信息创建代理
+	// Create proxy based on authentication information
 	if u.User.String() != "" {
-		// 使用用户名密码认证
+		// Use username and password authentication
 		auth := proxy.Auth{
 			User: u.User.Username(),
 		}
 		auth.Password, _ = u.User.Password()
 		dialer, err = proxy.SOCKS5("tcp", address, &auth, forward)
 	} else {
-		// 无认证模式
+		// No authentication mode
 		dialer, err = proxy.SOCKS5("tcp", address, nil, forward)
 	}
 

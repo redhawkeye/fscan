@@ -1,4 +1,3 @@
-// Config/types.go
 package Common
 
 type HostInfo struct {
@@ -8,21 +7,21 @@ type HostInfo struct {
 	Infostr []string
 }
 
-// ScanPlugin 定义扫描插件的结构
+// ScanPlugin defines the structure of a scan plugin
 type ScanPlugin struct {
-	Name     string                // 插件名称
-	Ports    []int                 // 关联的端口列表，空切片表示特殊扫描类型
-	ScanFunc func(*HostInfo) error // 扫描函数
+	Name     string                // Plugin name
+	Ports    []int                 // Associated port list, empty slice indicates special scan type
+	ScanFunc func(*HostInfo) error // Scan function
 }
 
-// HasPort 检查插件是否支持指定端口
+// HasPort checks if the plugin supports the specified port
 func (p *ScanPlugin) HasPort(port int) bool {
-	// 如果没有指定端口列表，表示支持所有端口
+	// If no port list is specified, it means all ports are supported
 	if len(p.Ports) == 0 {
 		return true
 	}
 
-	// 检查端口是否在支持列表中
+	// Check if the port is in the supported list
 	for _, supportedPort := range p.Ports {
 		if port == supportedPort {
 			return true
@@ -31,10 +30,10 @@ func (p *ScanPlugin) HasPort(port int) bool {
 	return false
 }
 
-// PluginManager 管理插件注册
+// PluginManager manages plugin registration
 var PluginManager = make(map[string]ScanPlugin)
 
-// RegisterPlugin 注册插件
+// RegisterPlugin registers a plugin
 func RegisterPlugin(name string, plugin ScanPlugin) {
 	PluginManager[name] = plugin
 }

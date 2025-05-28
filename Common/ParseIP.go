@@ -15,9 +15,9 @@ import (
 
 var ParseIPErr = errors.New(GetText("parse_ip_error"))
 
-// ParseIP 解析IP地址配置
+// ParseIP parses IP address configuration
 func ParseIP(host string, filename string, nohosts ...string) (hosts []string, err error) {
-	// 处理主机和端口组合的情况
+	// Handle host and port combinations
 	if filename == "" && strings.Contains(host, ":") {
 		hostport := strings.Split(host, ":")
 		if len(hostport) == 2 {
@@ -27,10 +27,10 @@ func ParseIP(host string, filename string, nohosts ...string) (hosts []string, e
 			LogInfo(GetText("host_port_parsed", Ports))
 		}
 	} else {
-		// 解析主机地址
+		// Parse host addresses
 		hosts = ParseIPs(host)
 
-		// 从文件加载额外主机
+		// Load additional hosts from file
 		if filename != "" {
 			fileHosts, err := Readipfile(filename)
 			if err != nil {
@@ -42,22 +42,22 @@ func ParseIP(host string, filename string, nohosts ...string) (hosts []string, e
 		}
 	}
 
-	// 处理排除主机
+	// Handle excluded hosts
 	if len(nohosts) > 0 && nohosts[0] != "" {
 		excludeHosts := ParseIPs(nohosts[0])
 		if len(excludeHosts) > 0 {
-			// 使用map存储有效主机
+			// Use map to store valid hosts
 			temp := make(map[string]struct{})
 			for _, host := range hosts {
 				temp[host] = struct{}{}
 			}
 
-			// 删除需要排除的主机
+			// Remove excluded hosts
 			for _, host := range excludeHosts {
 				delete(temp, host)
 			}
 
-			// 重建主机列表
+			// Rebuild host list
 			var newHosts []string
 			for host := range temp {
 				newHosts = append(newHosts, host)
@@ -68,11 +68,11 @@ func ParseIP(host string, filename string, nohosts ...string) (hosts []string, e
 		}
 	}
 
-	// 去重处理
+	// Remove duplicates
 	hosts = RemoveDuplicate(hosts)
 	LogInfo(GetText("final_valid_hosts", len(hosts)))
 
-	// 检查解析结果
+	// Check parsing results
 	if len(hosts) == 0 && len(HostPort) == 0 && (host != "" || filename != "") {
 		return nil, ParseIPErr
 	}
@@ -122,7 +122,7 @@ func parseIP(ip string) []string {
 	}
 }
 
-// parseIP2 解析CIDR格式的IP地址段
+// parseIP2 parses CIDR format IP address range
 func parseIP2(host string) []string {
 	_, ipNet, err := net.ParseCIDR(host)
 	if err != nil {
@@ -136,13 +136,13 @@ func parseIP2(host string) []string {
 	return hosts
 }
 
-// parseIP1 解析IP范围格式的地址
+// parseIP1 parses IP range format addresses
 func parseIP1(ip string) []string {
 	ipRange := strings.Split(ip, "-")
 	testIP := net.ParseIP(ipRange[0])
 	var allIP []string
 
-	// 处理简写格式 (192.168.111.1-255)
+	// Handle shorthand format (192.168.111.1-255)
 	if len(ipRange[1]) < 4 {
 		endNum, err := strconv.Atoi(ipRange[1])
 		if testIP == nil || endNum > 255 || err != nil {
@@ -166,7 +166,7 @@ func parseIP1(ip string) []string {
 
 		LogInfo(GetText("generate_ip_range", prefixIP, startNum, prefixIP, endNum))
 	} else {
-		// 处理完整IP范围格式
+		// Handle full IP range format
 		splitIP1 := strings.Split(ipRange[0], ".")
 		splitIP2 := strings.Split(ipRange[1], ".")
 
@@ -203,7 +203,7 @@ func parseIP1(ip string) []string {
 	return allIP
 }
 
-// IPRange 计算CIDR的起始IP和结束IP
+// IPRange calculates the start and end IP of a CIDR
 func IPRange(c *net.IPNet) string {
 	start := c.IP.String()
 	mask := c.Mask
@@ -221,7 +221,7 @@ func IPRange(c *net.IPNet) string {
 	return result
 }
 
-// Readipfile 从文件中按行读取IP地址
+// Readipfile reads IP addresses from a file line by line
 func Readipfile(filename string) ([]string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
@@ -270,7 +270,7 @@ func Readipfile(filename string) ([]string, error) {
 	return content, nil
 }
 
-// RemoveDuplicate 对字符串切片进行去重
+// RemoveDuplicate removes duplicates from a slice of strings
 func RemoveDuplicate(old []string) []string {
 	temp := make(map[string]struct{})
 	var result []string
@@ -285,9 +285,9 @@ func RemoveDuplicate(old []string) []string {
 	return result
 }
 
-// parseIP8 解析/8网段的IP地址
+// parseIP8 parses /8 subnet IP addresses
 func parseIP8(ip string) []string {
-	// 去除CIDR后缀获取基础IP
+	// Remove CIDR suffix to get base IP
 	realIP := ip[:len(ip)-2]
 	testIP := net.ParseIP(realIP)
 
@@ -296,28 +296,28 @@ func parseIP8(ip string) []string {
 		return nil
 	}
 
-	// 获取/8网段的第一段
+	// Get the first segment of the /8 subnet
 	ipRange := strings.Split(ip, ".")[0]
 	var allIP []string
 
 	LogInfo(GetText("parse_subnet", ipRange))
 
-	// 遍历所有可能的第二、三段
+	// Iterate over all possible second and third segments
 	for a := 0; a <= 255; a++ {
 		for b := 0; b <= 255; b++ {
-			// 添加常用网关IP
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.1", ipRange, a, b)) // 默认网关
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.2", ipRange, a, b)) // 备用网关
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.4", ipRange, a, b)) // 常用服务器
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.5", ipRange, a, b)) // 常用服务器
+			// Add common gateway IPs
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.1", ipRange, a, b)) // Default gateway
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.2", ipRange, a, b)) // Backup gateway
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.4", ipRange, a, b)) // Common server
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.5", ipRange, a, b)) // Common server
 
-			// 随机采样不同范围的IP
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(6, 55)))    // 低段随机
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(56, 100)))  // 中低段随机
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(101, 150))) // 中段随机
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(151, 200))) // 中高段随机
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(201, 253))) // 高段随机
-			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.254", ipRange, a, b))                   // 广播地址前
+			// Randomly sample different ranges of IPs
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(6, 55)))    // Low range random
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(56, 100)))  // Mid-low range random
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(101, 150))) // Mid range random
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(151, 200))) // Mid-high range random
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.%d", ipRange, a, b, RandInt(201, 253))) // High range random
+			allIP = append(allIP, fmt.Sprintf("%s.%d.%d.254", ipRange, a, b))                   // Broadcast address before
 		}
 	}
 
@@ -325,7 +325,7 @@ func parseIP8(ip string) []string {
 	return allIP
 }
 
-// RandInt 生成指定范围内的随机整数
+// RandInt generates a random integer within a specified range
 func RandInt(min, max int) int {
 	if min >= max || min == 0 || max == 0 {
 		return max

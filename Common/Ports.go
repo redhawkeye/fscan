@@ -11,6 +11,7 @@ var WebPorts = "80,81,82,83,84,85,86,87,88,89,90,91,92,98,99,443,800,801,808,880
 var AllPorts = "1-65535"
 var MainPorts = "21,22,23,80,81,110,135,139,143,389,443,445,502,873,993,995,1433,1521,3306,5432,5672,6379,7001,7687,8000,8005,8009,8080,8089,8443,9000,9042,9092,9200,10051,11211,15672,27017,61616"
 
+// ParsePortsFromString parses a comma-separated string of ports into a slice of integers
 func ParsePortsFromString(portsStr string) []int {
 	var ports []int
 	portStrings := strings.Split(portsStr, ",")

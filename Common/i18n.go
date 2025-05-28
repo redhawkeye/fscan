@@ -5,15 +5,15 @@ import (
 	"strings"
 )
 
-// 支持的语言类型
+// Supported language types
 const (
-	LangZH = "zh" // 中文
-	LangEN = "en" // 英文
-	LangJA = "ja" // 日文
-	LangRU = "ru" // 俄文
+	LangZH = "zh" // Chinese
+	LangEN = "en" // English
+	LangJA = "ja" // Japanese
+	LangRU = "ru" // Russian
 )
 
-// 多语言文本映射
+// Multilingual text mapping
 var i18nMap = map[string]map[string]string{
 	"output_init_start": {
 		LangZH: "开始初始化输出系统",
@@ -479,7 +479,7 @@ var i18nMap = map[string]map[string]string{
 		LangRU: "Включить режим сбора локальной информации",
 	},
 
-	// POC配置相关
+	// POC configuration
 	"flag_poc_path": {
 		LangZH: "指定自定义POC文件路径",
 		LangEN: "Specify custom POC file path",
@@ -515,7 +515,7 @@ var i18nMap = map[string]map[string]string{
 		LangRU: "Установить параллельность POC-сканирования",
 	},
 
-	// Redis配置相关
+	// Redis configuration
 	"flag_redis_file": {
 		LangZH: "指定Redis写入的SSH公钥文件",
 		LangEN: "Specify SSH public key file for Redis write",
@@ -536,7 +536,7 @@ var i18nMap = map[string]map[string]string{
 		LangJA: "Redisセキュリティ検出を無効化",
 		LangRU: "Отключить обнаружение безопасности Redis",
 	},
-	// 暴力破解配置
+	// Brute force configuration
 	"flag_disable_brute": {
 		LangZH: "禁用密码暴力破解",
 		LangEN: "Disable password brute force",
@@ -551,7 +551,7 @@ var i18nMap = map[string]map[string]string{
 		LangRU: "Установить максимальное количество попыток",
 	},
 
-	// 其他配置
+	// Other configuration
 	"flag_remote_path": {
 		LangZH: "指定FCG/SMB远程文件路径",
 		LangEN: "Specify FCG/SMB remote file path",
@@ -580,7 +580,7 @@ var i18nMap = map[string]map[string]string{
 		LangRU: "Включить сканирование протокола WMI",
 	},
 
-	// 输出配置
+	// Output configuration
 	"flag_output_file": {
 		LangZH: "指定结果输出文件名",
 		LangEN: "Specify output result filename",
@@ -1099,20 +1099,20 @@ var i18nMap = map[string]map[string]string{
 	},
 }
 
-// 当前语言设置
+// Current language setting
 var currentLang = LangEN
 
 func SetLanguage() {
-	// 使用flag设置的语言
+	// Use the language set by the flag
 	switch strings.ToLower(Language) {
 	case LangZH, LangEN, LangJA, LangRU:
 		currentLang = strings.ToLower(Language)
 	default:
-		currentLang = LangEN // 不支持的语言默认使用英文
+		currentLang = LangEN // Unsupported languages default to English
 	}
 }
 
-// GetText 获取指定key的当前语言文本
+// GetText retrieves the current language text for the specified key
 func GetText(key string, args ...interface{}) string {
 	if texts, ok := i18nMap[key]; ok {
 		if text, ok := texts[currentLang]; ok {
