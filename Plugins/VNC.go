@@ -17,21 +17,21 @@ func VncScan(info *Common.HostInfo) (tmperr error) {
 	modename := "vnc"
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug(fmt.Sprintf("Start scanning %s", target))
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试密码组合 (总密码数: %d)", totalPass))
+	Common.LogDebug(fmt.Sprintf("Start trying password combinations (Total passwords: %d)", totalPass))
 
 	tried := 0
 
-	// 遍历所有密码
+	// Traverse all passwords
 	for _, pass := range Common.Passwords {
 		tried++
-		Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试密码: %s", tried, totalPass, pass))
+		Common.LogDebug(fmt.Sprintf("[%d/%d] Trying password: %s", tried, totalPass, pass))
 
-		// 重试循环
+		// Retry loop
 		for retryCount := 0; retryCount < maxRetries; retryCount++ {
 			if retryCount > 0 {
-				Common.LogDebug(fmt.Sprintf("第%d次重试密码: %s", retryCount+1, pass))
+				Common.LogDebug(fmt.Sprintf("Retrying password %d: %s", retryCount+1, pass))
 			}
 
 			done := make(chan struct {
@@ -55,11 +55,11 @@ func VncScan(info *Common.HostInfo) (tmperr error) {
 			case result := <-done:
 				err = result.err
 				if result.success && err == nil {
-					// 连接成功
-					successLog := fmt.Sprintf("%s://%s 密码: %v", modename, target, pass)
+					// Connection successful
+					successLog := fmt.Sprintf("%s://%s Password: %v", modename, target, pass)
 					Common.LogSuccess(successLog)
 
-					// 保存结果
+					// Save result
 					vulnResult := &Common.ScanResult{
 						Time:   time.Now(),
 						Type:   Common.VULN,
@@ -76,11 +76,11 @@ func VncScan(info *Common.HostInfo) (tmperr error) {
 					return nil
 				}
 			case <-time.After(time.Duration(Common.Timeout) * time.Second):
-				err = fmt.Errorf("连接超时")
+				err = fmt.Errorf("Connection timed out")
 			}
 
 			if err != nil {
-				errlog := fmt.Sprintf("%s://%s 尝试密码: %v 错误: %v",
+				errlog := fmt.Sprintf("%s://%s Trying password: %v Error: %v",
 					modename, target, pass, err)
 				Common.LogError(errlog)
 
@@ -95,16 +95,16 @@ func VncScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个密码", tried))
+	Common.LogDebug(fmt.Sprintf("Scan complete, tried %d passwords", tried))
 	return tmperr
 }
 
-// VncConn 尝试建立VNC连接
+// VncConn attempts to establish a VNC connection
 func VncConn(info *Common.HostInfo, pass string) (flag bool, err error) {
 	flag = false
 	Host, Port := info.Host, info.Ports
 
-	// 建立TCP连接
+	// Establish TCP connection
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:%s", Host, Port),
 		time.Duration(Common.Timeout)*time.Second)
 	if err != nil {
@@ -112,7 +112,7 @@ func VncConn(info *Common.HostInfo, pass string) (flag bool, err error) {
 	}
 	defer conn.Close()
 
-	// 配置VNC客户端
+	// Configure VNC client
 	config := &vnc.ClientConfig{
 		Auth: []vnc.ClientAuth{
 			&vnc.PasswordAuth{
@@ -121,7 +121,7 @@ func VncConn(info *Common.HostInfo, pass string) (flag bool, err error) {
 		},
 	}
 
-	// 尝试VNC认证
+	// Attempt VNC authentication
 	client, err := vnc.Client(conn, config)
 	if err == nil {
 		defer client.Close()

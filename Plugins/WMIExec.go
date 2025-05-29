@@ -35,19 +35,19 @@ func WmiExec(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	starttime := time.Now().Unix()
 
-	// 遍历所有用户名密码组合
+	// Traverse all username and password combinations
 	for _, user := range Common.Userdict["smb"] {
 		for _, pass := range Common.Passwords {
 			pass = strings.Replace(pass, "{user}", user, -1)
 
-			// 检查是否超时
+			// Check for timeout
 			if time.Now().Unix()-starttime > int64(Common.Timeout) {
-				return fmt.Errorf("扫描超时")
+				return fmt.Errorf("scan timeout")
 			}
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
-				// 执行WMI连接
+				// Execute WMI connection
 				done := make(chan struct {
 					success bool
 					err     error
@@ -61,13 +61,13 @@ func WmiExec(info *Common.HostInfo) (tmperr error) {
 					}{success, err}
 				}(user, pass)
 
-				// 等待结果或超时
+				// Wait for result or timeout
 				var err error
 				select {
 				case result := <-done:
 					err = result.err
 					if result.success {
-						// 成功连接
+						// Successful connection
 						var successLog string
 						if Common.Domain != "" {
 							successLog = fmt.Sprintf("WmiExec %v:%v:%v\\%v ",
@@ -86,29 +86,29 @@ func WmiExec(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-time.After(time.Duration(Common.Timeout) * time.Second):
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("connection timeout")
 				}
 
-				// 处理错误情况
+				// Handle error cases
 				if err != nil {
 					errlog := fmt.Sprintf("WmiExec %v:%v %v %v %v",
 						info.Host, 445, user, pass, err)
 					errlog = strings.Replace(errlog, "\n", "", -1)
 					Common.LogError(errlog)
 
-					// 检查是否需要重试
+					// Check if retry is needed
 					if retryErr := Common.CheckErrs(err); retryErr != nil {
 						if retryCount == maxRetries-1 {
 							return err
 						}
-						continue // 继续重试
+						continue // Continue retrying
 					}
 				}
 
-				break // 如果不需要重试，跳出重试循环
+				break // If no retry is needed, exit retry loop
 			}
 
-			// 如果是32位hash值,只尝试一次密码
+			// If it's a 32-bit hash value, only try the password once
 			if len(Common.HashValue) == 32 {
 				break
 			}
@@ -130,7 +130,7 @@ func WMIExec(target, username, password, hash, domain, command string) (flag boo
 	}
 	defer ole.CoUninitialize()
 
-	// 构建认证字符串
+	// Build authentication string
 	var auth string
 	if domain != "" {
 		auth = fmt.Sprintf("%s\\%s:%s", domain, username, password)
@@ -138,7 +138,7 @@ func WMIExec(target, username, password, hash, domain, command string) (flag boo
 		auth = fmt.Sprintf("%s:%s", username, password)
 	}
 
-	// 构建WMI连接字符串
+	// Build WMI connection string
 	connectStr := fmt.Sprintf("winmgmts://%s@%s/root/cimv2", auth, target)
 
 	unknown, err := oleutil.CreateObject("WbemScripting.SWbemLocator")
@@ -153,28 +153,28 @@ func WMIExec(target, username, password, hash, domain, command string) (flag boo
 	}
 	defer wmi.Release()
 
-	// 使用connectStr来建立连接
+	// Use connectStr to establish connection
 	service, err := oleutil.CallMethod(wmi, "ConnectServer", "", connectStr)
 	if err != nil {
 		return false, err
 	}
 	defer service.Clear()
 
-	// 连接成功
+	// Connection successful
 	flag = true
 
-	// 如果有命令则执行
+	// If there is a command, execute it
 	if command != "" {
 		command = "C:\\Windows\\system32\\cmd.exe /c " + command
 
-		// 创建Win32_Process对象来执行命令
+		// Create Win32_Process object to execute command
 		process, err := oleutil.CallMethod(service.ToIDispatch(), "Get", "Win32_Process")
 		if err != nil {
 			return flag, err
 		}
 		defer process.Clear()
 
-		// 执行命令
+		// Execute command
 		_, err = oleutil.CallMethod(process.ToIDispatch(), "Create", command)
 		if err != nil {
 			return flag, err

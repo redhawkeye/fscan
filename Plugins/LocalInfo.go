@@ -10,21 +10,21 @@ import (
 )
 
 var (
-	// 文件扫描黑名单,跳过这些类型和目录
+	// File scan blacklist, skip these types and directories
 	blacklist = []string{
 		".exe", ".dll", ".png", ".jpg", ".bmp", ".xml", ".bin",
 		".dat", ".manifest", "locale", "winsxs", "windows\\sys",
 	}
 
-	// 敏感文件关键词白名单
+	// Sensitive file keyword whitelist
 	whitelist = []string{
-		"密码", "账号", "账户", "配置", "服务器",
-		"数据库", "备忘", "常用", "通讯录",
+		"password", "account", "configuration", "server",
+		"database", "memo", "common", "contacts",
 	}
 
-	// Linux系统关键配置文件路径
+	// Linux system key configuration file paths
 	linuxSystemPaths = []string{
-		// Apache配置
+		// Apache configuration
 		"/etc/apache/httpd.conf",
 		"/etc/httpd/conf/httpd.conf",
 		"/etc/httpd/httpd.conf",
@@ -37,11 +37,11 @@ var (
 		"/etc/apache2/sites-available/*",
 		"/etc/apache2/apache2.conf",
 
-		// Nginx配置
+		// Nginx configuration
 		"/etc/nginx/nginx.conf",
 		"/etc/nginx/conf.d/nginx.conf",
 
-		// 系统配置文件
+		// System configuration files
 		"/etc/hosts.deny",
 		"/etc/bashrc",
 		"/etc/issue",
@@ -60,7 +60,7 @@ var (
 		"/etc/sendmail.cf",
 		"/etc/sendmail.cw",
 
-		// proc信息
+		// proc information
 		"/proc/mounts",
 		"/proc/cpuinfo",
 		"/proc/meminfo",
@@ -71,7 +71,7 @@ var (
 		"/proc/1/exe",
 		"/proc/config.gz",
 
-		// 用户配置文件
+		// User configuration files
 		"/root/.ssh/authorized_keys",
 		"/root/.ssh/id_rsa",
 		"/root/.ssh/id_rsa.keystore",
@@ -81,7 +81,7 @@ var (
 		"/root/.mysql_history",
 	}
 
-	// Windows系统关键配置文件路径
+	// Windows system key configuration file paths
 	windowsSystemPaths = []string{
 		"C:\\boot.ini",
 		"C:\\windows\\systems32\\inetsrv\\MetaBase.xml",
@@ -90,34 +90,34 @@ var (
 	}
 )
 
-// LocalInfoScan 本地信息收集主函数
+// LocalInfoScan main function for local information collection
 func LocalInfoScan(info *Common.HostInfo) (err error) {
-	Common.LogInfo("开始本地信息收集...")
+	Common.LogInfo("Starting local information collection...")
 	
-	// 获取用户主目录
+	// Get user home directory
 	home, err := os.UserHomeDir()
 	if err != nil {
-		Common.LogError(fmt.Sprintf("获取用户主目录失败: %v", err))
+		Common.LogError(fmt.Sprintf("Failed to get user home directory: %v", err))
 		return err
 	}
 
-	// 扫描固定位置的敏感文件
+	// Scan sensitive files in fixed locations
 	scanFixedLocations(home)
 
-	// 根据规则搜索敏感文件
+	// Search for sensitive files based on rules
 	searchSensitiveFiles()
 
-	Common.LogInfo("本地信息收集完成")
+	Common.LogInfo("Local information collection completed")
 	return nil
 }
 
-// scanFixedLocations 扫描固定位置的敏感文件
+// scanFixedLocations scans sensitive files in fixed locations
 func scanFixedLocations(home string) {
 	var paths []string
 
 	switch runtime.GOOS {
 	case "windows":
-		// 添加Windows固定路径
+		// Add Windows fixed paths
 		paths = append(paths, windowsSystemPaths...)
 		paths = append(paths, []string{
 			filepath.Join(home, "AppData", "Local", "Google", "Chrome", "User Data", "Default", "Login Data"),
@@ -127,7 +127,7 @@ func scanFixedLocations(home string) {
 		}...)
 
 	case "linux":
-		// 添加Linux固定路径
+		// Add Linux fixed paths
 		paths = append(paths, linuxSystemPaths...)
 		paths = append(paths, []string{
 			filepath.Join(home, ".config", "google-chrome", "Default", "Login Data"),
@@ -136,7 +136,7 @@ func scanFixedLocations(home string) {
 	}
 
 	for _, path := range paths {
-		// 处理通配符路径
+		// Handle wildcard paths
 		if strings.Contains(path, "*") {
 			var _ = strings.ReplaceAll(path, "*", "")
 			if files, err := filepath.Glob(path); err == nil {
@@ -151,20 +151,20 @@ func scanFixedLocations(home string) {
 	}
 }
 
-// checkAndLogFile 检查并记录敏感文件
+// checkAndLogFile checks and logs sensitive files
 func checkAndLogFile(path string) {
 	if _, err := os.Stat(path); err == nil {
-		Common.LogSuccess(fmt.Sprintf("发现敏感文件: %s", path))
+		Common.LogSuccess(fmt.Sprintf("Found sensitive file: %s", path))
 	}
 }
 
-// searchSensitiveFiles 搜索敏感文件
+// searchSensitiveFiles searches for sensitive files
 func searchSensitiveFiles() {
 	var searchPaths []string
 
 	switch runtime.GOOS {
 	case "windows":
-		// Windows下常见的敏感目录
+		// Common sensitive directories in Windows
 		home, _ := os.UserHomeDir()
 		searchPaths = []string{
 			"C:\\Users\\Public\\Documents",
@@ -176,7 +176,7 @@ func searchSensitiveFiles() {
 			"C:\\Program Files (x86)",
 		}
 	case "linux":
-		// Linux下常见的敏感目录
+		// Common sensitive directories in Linux
 		home, _ := os.UserHomeDir()
 		searchPaths = []string{
 			"/home",
@@ -190,25 +190,25 @@ func searchSensitiveFiles() {
 		}
 	}
 
-	// 在限定目录下搜索
+	// Search within limited directories
 	for _, searchPath := range searchPaths {
 		filepath.Walk(searchPath, func(path string, info os.FileInfo, err error) error {
 			if err != nil {
 				return nil
 			}
 
-			// 跳过黑名单目录和文件
+			// Skip blacklist directories and files
 			for _, black := range blacklist {
 				if strings.Contains(strings.ToLower(path), black) {
 					return filepath.SkipDir
 				}
 			}
 
-			// 检查白名单关键词
+			// Check whitelist keywords
 			for _, white := range whitelist {
 				fileName := strings.ToLower(info.Name())
 				if strings.Contains(fileName, white) {
-					Common.LogSuccess(fmt.Sprintf("发现潜在敏感文件: %s", path))
+					Common.LogSuccess(fmt.Sprintf("Found potential sensitive file: %s", path))
 					break
 				}
 			}

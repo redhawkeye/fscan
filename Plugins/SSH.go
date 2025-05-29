@@ -19,25 +19,25 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 	maxRetries := Common.MaxRetries
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
 	totalUsers := len(Common.Userdict["ssh"])
 	totalPass := len(Common.Passwords)
-	Common.LogDebug(fmt.Sprintf("开始尝试用户名密码组合 (总用户数: %d, 总密码数: %d)", totalUsers, totalPass))
+	Common.LogDebug(fmt.Sprintf("Starting to try username and password combinations (Total users: %d, Total passwords: %d)", totalUsers, totalPass))
 
 	tried := 0
 	total := totalUsers * totalPass
 
-	// 遍历所有用户名密码组合
+	// Traverse all username and password combinations
 	for _, user := range Common.Userdict["ssh"] {
 		for _, pass := range Common.Passwords {
 			tried++
 			pass = strings.Replace(pass, "{user}", user, -1)
-			Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试: %s:%s", tried, total, user, pass))
+			Common.LogDebug(fmt.Sprintf("[%d/%d] Trying: %s:%s", tried, total, user, pass))
 
-			// 重试循环
+			// Retry loop
 			for retryCount := 0; retryCount < maxRetries; retryCount++ {
 				if retryCount > 0 {
-					Common.LogDebug(fmt.Sprintf("第%d次重试: %s:%s", retryCount+1, user, pass))
+					Common.LogDebug(fmt.Sprintf("Retry %d: %s:%s", retryCount+1, user, pass))
 				}
 
 				ctx, cancel := context.WithTimeout(context.Background(), time.Duration(Common.Timeout)*time.Second)
@@ -62,10 +62,10 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 				case result := <-done:
 					err = result.err
 					if result.success {
-						successMsg := fmt.Sprintf("SSH认证成功 %s User:%v Pass:%v", target, user, pass)
+						successMsg := fmt.Sprintf("SSH authentication successful %s User:%v Pass:%v", target, user, pass)
 						Common.LogSuccess(successMsg)
 
-						// 保存结果
+						// Save result
 						details := map[string]interface{}{
 							"port":     info.Ports,
 							"service":  "ssh",
@@ -74,14 +74,14 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 							"type":     "weak-password",
 						}
 
-						// 如果使用了密钥认证，添加密钥信息
+						// If key authentication is used, add key information
 						if Common.SshKeyPath != "" {
 							details["auth_type"] = "key"
 							details["key_path"] = Common.SshKeyPath
 							details["password"] = nil
 						}
 
-						// 如果执行了命令，添加命令信息
+						// If a command is executed, add command information
 						if Common.Command != "" {
 							details["command"] = Common.Command
 						}
@@ -100,13 +100,13 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 						return nil
 					}
 				case <-ctx.Done():
-					err = fmt.Errorf("连接超时")
+					err = fmt.Errorf("Connection timeout")
 				}
 
 				cancel()
 
 				if err != nil {
-					errMsg := fmt.Sprintf("SSH认证失败 %s User:%v Pass:%v Err:%v",
+					errMsg := fmt.Sprintf("SSH authentication failed %s User:%v Pass:%v Err:%v",
 						target, user, pass, err)
 					Common.LogError(errMsg)
 
@@ -119,7 +119,7 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 				}
 
 				if Common.SshKeyPath != "" {
-					Common.LogDebug("检测到SSH密钥路径，停止密码尝试")
+					Common.LogDebug("Detected SSH key path, stopping password attempts")
 					return err
 				}
 
@@ -128,7 +128,7 @@ func SshScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个组合", tried))
+	Common.LogDebug(fmt.Sprintf("Scan completed, tried %d combinations", tried))
 	return tmperr
 }
 
@@ -137,12 +137,12 @@ func SshConn(info *Common.HostInfo, user string, pass string) (flag bool, err er
 	if Common.SshKeyPath != "" {
 		pemBytes, err := ioutil.ReadFile(Common.SshKeyPath)
 		if err != nil {
-			return false, fmt.Errorf("读取密钥失败: %v", err)
+			return false, fmt.Errorf("Failed to read key: %v", err)
 		}
 
 		signer, err := ssh.ParsePrivateKey(pemBytes)
 		if err != nil {
-			return false, fmt.Errorf("解析密钥失败: %v", err)
+			return false, fmt.Errorf("Failed to parse key: %v", err)
 		}
 		auth = []ssh.AuthMethod{ssh.PublicKeys(signer)}
 	} else {
@@ -170,7 +170,7 @@ func SshConn(info *Common.HostInfo, user string, pass string) (flag bool, err er
 	}
 	defer session.Close()
 
-	// 如果需要执行命令
+	// If a command needs to be executed
 	if Common.Command != "" {
 		_, err := session.CombinedOutput(Common.Command)
 		if err != nil {

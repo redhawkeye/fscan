@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// SNMPScan 执行SNMP服务扫描
+// SNMPScan executes SNMP service scan
 func SNMPScan(info *Common.HostInfo) (tmperr error) {
 	if Common.DisableBrute {
 		return
@@ -21,19 +21,19 @@ func SNMPScan(info *Common.HostInfo) (tmperr error) {
 	timeout := time.Duration(Common.Timeout) * time.Second
 	target := fmt.Sprintf("%v:%v", info.Host, info.Ports)
 
-	Common.LogDebug(fmt.Sprintf("开始扫描 %s", target))
-	Common.LogDebug(fmt.Sprintf("尝试默认 community 列表 (总数: %d)", len(defaultCommunities)))
+	Common.LogDebug(fmt.Sprintf("Starting scan %s", target))
+	Common.LogDebug(fmt.Sprintf("Trying default community list (total: %d)", len(defaultCommunities)))
 
 	tried := 0
 	total := len(defaultCommunities)
 
 	for _, community := range defaultCommunities {
 		tried++
-		Common.LogDebug(fmt.Sprintf("[%d/%d] 尝试 community: %s", tried, total, community))
+		Common.LogDebug(fmt.Sprintf("[%d/%d] Trying community: %s", tried, total, community))
 
 		for retryCount := 0; retryCount < maxRetries; retryCount++ {
 			if retryCount > 0 {
-				Common.LogDebug(fmt.Sprintf("第%d次重试: community: %s", retryCount+1, community))
+				Common.LogDebug(fmt.Sprintf("Retry %d: community: %s", retryCount+1, community))
 			}
 
 			done := make(chan struct {
@@ -59,13 +59,13 @@ func SNMPScan(info *Common.HostInfo) (tmperr error) {
 			case result := <-done:
 				err = result.err
 				if result.success && err == nil {
-					successMsg := fmt.Sprintf("SNMP服务 %s community: %v 连接成功", target, community)
+					successMsg := fmt.Sprintf("SNMP service %s community: %v connected successfully", target, community)
 					if result.sysDesc != "" {
 						successMsg += fmt.Sprintf(" System: %v", result.sysDesc)
 					}
 					Common.LogSuccess(successMsg)
 
-					// 保存结果
+					// Save result
 					vulnResult := &Common.ScanResult{
 						Time:   time.Now(),
 						Type:   Common.VULN,
@@ -83,11 +83,11 @@ func SNMPScan(info *Common.HostInfo) (tmperr error) {
 					return nil
 				}
 			case <-time.After(timeout):
-				err = fmt.Errorf("连接超时")
+				err = fmt.Errorf("connection timeout")
 			}
 
 			if err != nil {
-				errlog := fmt.Sprintf("SNMP服务 %s 尝试失败 community: %v 错误: %v",
+				errlog := fmt.Sprintf("SNMP service %s attempt failed community: %v error: %v",
 					target, community, err)
 				Common.LogError(errlog)
 
@@ -102,11 +102,11 @@ func SNMPScan(info *Common.HostInfo) (tmperr error) {
 		}
 	}
 
-	Common.LogDebug(fmt.Sprintf("扫描完成，共尝试 %d 个 community", tried))
+	Common.LogDebug(fmt.Sprintf("Scan completed, tried %d communities", tried))
 	return tmperr
 }
 
-// SNMPConnect 尝试SNMP连接
+// SNMPConnect attempts SNMP connection
 func SNMPConnect(info *Common.HostInfo, community string, portNum int) (bool, string, error) {
 	host := info.Host
 	timeout := time.Duration(Common.Timeout) * time.Second
@@ -140,5 +140,5 @@ func SNMPConnect(info *Common.HostInfo, community string, portNum int) (bool, st
 		return true, sysDesc, nil
 	}
 
-	return false, "", fmt.Errorf("认证失败")
+	return false, "", fmt.Errorf("authentication failed")
 }

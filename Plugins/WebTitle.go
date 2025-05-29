@@ -18,41 +18,41 @@ import (
 	"golang.org/x/text/encoding/simplifiedchinese"
 )
 
-// WebTitle 获取Web标题和指纹信息
+// WebTitle Get Web title and fingerprint information
 func WebTitle(info *Common.HostInfo) error {
-	Common.LogDebug(fmt.Sprintf("开始获取Web标题，初始信息: %+v", info))
+	Common.LogDebug(fmt.Sprintf("Start getting Web title, initial information: %+v", info))
 
-	// 获取网站标题信息
+	// Get website title information
 	err, CheckData := GOWebTitle(info)
-	Common.LogDebug(fmt.Sprintf("GOWebTitle执行完成 - 错误: %v, 检查数据长度: %d", err, len(CheckData)))
+	Common.LogDebug(fmt.Sprintf("GOWebTitle execution completed - Error: %v, Check data length: %d", err, len(CheckData)))
 
 	info.Infostr = WebScan.InfoCheck(info.Url, &CheckData)
-	Common.LogDebug(fmt.Sprintf("信息检查完成，获得信息: %v", info.Infostr))
+	Common.LogDebug(fmt.Sprintf("Information check completed, obtained information: %v", info.Infostr))
 
-	// 检查是否为打印机，避免意外打印
+	// Check if it is a printer to avoid accidental printing
 	for _, v := range info.Infostr {
-		if v == "打印机" {
-			Common.LogDebug("检测到打印机，停止扫描")
+		if v == "Printer" {
+			Common.LogDebug("Printer detected, stopping scan")
 			return nil
 		}
 	}
 
-	// 输出错误信息（如果有）
+	// Output error message (if any)
 	if err != nil {
-		errlog := fmt.Sprintf("网站标题 %v %v", info.Url, err)
+		errlog := fmt.Sprintf("Website title %v %v", info.Url, err)
 		Common.LogError(errlog)
 	}
 
 	return err
 }
 
-// GOWebTitle 获取网站标题并处理URL
+// GOWebTitle Get website title and process URL
 func GOWebTitle(info *Common.HostInfo) (err error, CheckData []WebScan.CheckDatas) {
-	Common.LogDebug(fmt.Sprintf("开始处理URL: %s", info.Url))
+	Common.LogDebug(fmt.Sprintf("Start processing URL: %s", info.Url))
 
-	// 如果URL未指定，根据端口生成URL
+	// If URL is not specified, generate URL based on port
 	if info.Url == "" {
-		Common.LogDebug("URL为空，根据端口生成URL")
+		Common.LogDebug("URL is empty, generating URL based on port")
 		switch info.Ports {
 		case "80":
 			info.Url = fmt.Sprintf("http://%s", info.Host)
@@ -60,61 +60,61 @@ func GOWebTitle(info *Common.HostInfo) (err error, CheckData []WebScan.CheckData
 			info.Url = fmt.Sprintf("https://%s", info.Host)
 		default:
 			host := fmt.Sprintf("%s:%s", info.Host, info.Ports)
-			Common.LogDebug(fmt.Sprintf("正在检测主机协议: %s", host))
+			Common.LogDebug(fmt.Sprintf("Detecting host protocol: %s", host))
 			protocol := GetProtocol(host, Common.Timeout)
-			Common.LogDebug(fmt.Sprintf("检测到协议: %s", protocol))
+			Common.LogDebug(fmt.Sprintf("Detected protocol: %s", protocol))
 			info.Url = fmt.Sprintf("%s://%s:%s", protocol, info.Host, info.Ports)
 		}
 	} else {
-		// 处理未指定协议的URL
+		// Process URL without specified protocol
 		if !strings.Contains(info.Url, "://") {
-			Common.LogDebug("URL未包含协议，开始检测")
+			Common.LogDebug("URL does not contain protocol, start detecting")
 			host := strings.Split(info.Url, "/")[0]
 			protocol := GetProtocol(host, Common.Timeout)
-			Common.LogDebug(fmt.Sprintf("检测到协议: %s", protocol))
+			Common.LogDebug(fmt.Sprintf("Detected protocol: %s", protocol))
 			info.Url = fmt.Sprintf("%s://%s", protocol, info.Url)
 		}
 	}
-	Common.LogDebug(fmt.Sprintf("协议检测完成后的URL: %s", info.Url))
+	Common.LogDebug(fmt.Sprintf("URL after protocol detection: %s", info.Url))
 
-	// 第一次获取URL
-	Common.LogDebug("第一次尝试访问URL")
+	// First attempt to get URL
+	Common.LogDebug("First attempt to access URL")
 	err, result, CheckData := geturl(info, 1, CheckData)
-	Common.LogDebug(fmt.Sprintf("第一次访问结果 - 错误: %v, 返回信息: %s", err, result))
+	Common.LogDebug(fmt.Sprintf("First access result - Error: %v, Return information: %s", err, result))
 	if err != nil && !strings.Contains(err.Error(), "EOF") {
 		return
 	}
 
-	// 处理URL跳转
+	// Process URL redirection
 	if strings.Contains(result, "://") {
-		Common.LogDebug(fmt.Sprintf("检测到重定向到: %s", result))
+		Common.LogDebug(fmt.Sprintf("Detected redirection to: %s", result))
 		info.Url = result
 		err, result, CheckData = geturl(info, 3, CheckData)
-		Common.LogDebug(fmt.Sprintf("重定向请求结果 - 错误: %v, 返回信息: %s", err, result))
+		Common.LogDebug(fmt.Sprintf("Redirection request result - Error: %v, Return information: %s", err, result))
 		if err != nil {
 			return
 		}
 	}
 
-	// 处理HTTP到HTTPS的升级
+	// Process HTTP to HTTPS upgrade
 	if result == "https" && !strings.HasPrefix(info.Url, "https://") {
-		Common.LogDebug("正在升级到HTTPS")
+		Common.LogDebug("Upgrading to HTTPS")
 		info.Url = strings.Replace(info.Url, "http://", "https://", 1)
-		Common.LogDebug(fmt.Sprintf("升级后的URL: %s", info.Url))
+		Common.LogDebug(fmt.Sprintf("URL after upgrade: %s", info.Url))
 		err, result, CheckData = geturl(info, 1, CheckData)
 
-		// 处理升级后的跳转
+		// Process redirection after upgrade
 		if strings.Contains(result, "://") {
-			Common.LogDebug(fmt.Sprintf("HTTPS升级后发现重定向到: %s", result))
+			Common.LogDebug(fmt.Sprintf("Redirection detected after HTTPS upgrade to: %s", result))
 			info.Url = result
 			err, _, CheckData = geturl(info, 3, CheckData)
 			if err != nil {
 				return
+				}
 			}
 		}
-	}
 
-	Common.LogDebug(fmt.Sprintf("GOWebTitle执行完成 - 错误: %v", err))
+	Common.LogDebug(fmt.Sprintf("GOWebTitle execution completed - Error: %v", err))
 	if err != nil {
 		return
 	}
@@ -122,12 +122,12 @@ func GOWebTitle(info *Common.HostInfo) (err error, CheckData []WebScan.CheckData
 }
 
 func geturl(info *Common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (error, string, []WebScan.CheckDatas) {
-	Common.LogDebug(fmt.Sprintf("geturl开始执行 - URL: %s, 标志位: %d", info.Url, flag))
+	Common.LogDebug(fmt.Sprintf("geturl execution started - URL: %s, Flag: %d", info.Url, flag))
 
-	// 处理目标URL
+	// Process target URL
 	Url := info.Url
 	if flag == 2 {
-		Common.LogDebug("处理favicon.ico URL")
+		Common.LogDebug("Processing favicon.ico URL")
 		URL, err := url.Parse(Url)
 		if err == nil {
 			Url = fmt.Sprintf("%s://%s/favicon.ico", URL.Scheme, URL.Host)
@@ -137,15 +137,15 @@ func geturl(info *Common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (er
 		Common.LogDebug(fmt.Sprintf("favicon URL: %s", Url))
 	}
 
-	// 创建HTTP请求
-	Common.LogDebug("开始创建HTTP请求")
+	// Create HTTP request
+	Common.LogDebug("Start creating HTTP request")
 	req, err := http.NewRequest("GET", Url, nil)
 	if err != nil {
-		Common.LogDebug(fmt.Sprintf("创建HTTP请求失败: %v", err))
+		Common.LogDebug(fmt.Sprintf("Failed to create HTTP request: %v", err))
 		return err, "", CheckData
 	}
 
-	// 设置请求头
+	// Set request headers
 	req.Header.Set("User-agent", Common.UserAgent)
 	req.Header.Set("Accept", Common.Accept)
 	req.Header.Set("Accept-Language", "zh-CN,zh;q=0.9")
@@ -153,82 +153,82 @@ func geturl(info *Common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (er
 		req.Header.Set("Cookie", Common.Cookie)
 	}
 	req.Header.Set("Connection", "close")
-	Common.LogDebug("已设置请求头")
+	Common.LogDebug("Request headers set")
 
-	// 选择HTTP客户端
+	// Choose HTTP client
 	var client *http.Client
 	if flag == 1 {
 		client = lib.ClientNoRedirect
-		Common.LogDebug("使用不跟随重定向的客户端")
+		Common.LogDebug("Using client without following redirects")
 	} else {
 		client = lib.Client
-		Common.LogDebug("使用普通客户端")
+		Common.LogDebug("Using regular client")
 	}
 
-	// 检查客户端是否为空
+	// Check if client is nil
 	if client == nil {
-		Common.LogDebug("错误: HTTP客户端为空")
-		return fmt.Errorf("HTTP客户端未初始化"), "", CheckData
+		Common.LogDebug("Error: HTTP client is nil")
+		return fmt.Errorf("HTTP client not initialized"), "", CheckData
 	}
 
-	// 发送请求
-	Common.LogDebug("开始发送HTTP请求")
+	// Send request
+	Common.LogDebug("Start sending HTTP request")
 	resp, err := client.Do(req)
 	if err != nil {
-		Common.LogDebug(fmt.Sprintf("HTTP请求失败: %v", err))
+		Common.LogDebug(fmt.Sprintf("HTTP request failed: %v", err))
 		return err, "https", CheckData
 	}
 	defer resp.Body.Close()
-	Common.LogDebug(fmt.Sprintf("收到HTTP响应，状态码: %d", resp.StatusCode))
+	Common.LogDebug(fmt.Sprintf("Received HTTP response, status code: %d", resp.StatusCode))
 
-	// 读取响应内容
+	// Read response content
 	body, err := getRespBody(resp)
 	if err != nil {
-		Common.LogDebug(fmt.Sprintf("读取响应内容失败: %v", err))
+		Common.LogDebug(fmt.Sprintf("Failed to read response content: %v", err))
 		return err, "https", CheckData
 	}
-	Common.LogDebug(fmt.Sprintf("成功读取响应内容，长度: %d", len(body)))
+	Common.LogDebug(fmt.Sprintf("Successfully read response content, length: %d", len(body)))
 
-	// 保存检查数据
+	// Save check data
 	CheckData = append(CheckData, WebScan.CheckDatas{body, fmt.Sprintf("%s", resp.Header)})
-	Common.LogDebug("已保存检查数据")
+	Common.LogDebug("Check data saved")
 
-	// 处理非favicon请求
+	// Process non-favicon request
 	var reurl string
 	if flag != 2 {
-		// 处理编码
+		// Process encoding
 		if !utf8.Valid(body) {
 			body, _ = simplifiedchinese.GBK.NewDecoder().Bytes(body)
 		}
 
-		// 获取页面信息
+		// Get page information
 		title := gettitle(body)
 		length := resp.Header.Get("Content-Length")
 		if length == "" {
 			length = fmt.Sprintf("%v", len(body))
 		}
 
-		// 收集服务器信息
+		// Collect server information
 		serverInfo := make(map[string]interface{})
 		serverInfo["title"] = title
 		serverInfo["length"] = length
 		serverInfo["status_code"] = resp.StatusCode
 
-		// 收集响应头信息
+		// Collect response header information
 		for k, v := range resp.Header {
 			if len(v) > 0 {
 				serverInfo[strings.ToLower(k)] = v[0]
 			}
 		}
 
-		// 检查重定向
+		// Check for redirection
 		redirURL, err1 := resp.Location()
 		if err1 == nil {
 			reurl = redirURL.String()
 			serverInfo["redirect_url"] = reurl
 		}
 
-		// 保存扫描结果
+		// Save scan result
 		result := &Common.ScanResult{
 			Time:   time.Now(),
 			Type:   Common.SERVICE,
@@ -242,54 +242,54 @@ func geturl(info *Common.HostInfo, flag int, CheckData []WebScan.CheckDatas) (er
 				"status_code":  resp.StatusCode,
 				"length":       length,
 				"server_info":  serverInfo,
-				"fingerprints": info.Infostr, // 指纹信息
+				"fingerprints": info.Infostr, // Fingerprint information
 			},
 		}
 		Common.SaveResult(result)
 
-		// 输出控制台日志
-		logMsg := fmt.Sprintf("网站标题 %-25v 状态码:%-3v 长度:%-6v 标题:%v",
+		// Output console log
+		logMsg := fmt.Sprintf("Website title %-25v Status code:%-3v Length:%-6v Title:%v",
 			resp.Request.URL, resp.StatusCode, length, title)
 		if reurl != "" {
-			logMsg += fmt.Sprintf(" 重定向地址: %s", reurl)
+			logMsg += fmt.Sprintf(" Redirect URL: %s", reurl)
 		}
 		Common.LogSuccess(logMsg)
 	}
 
-	// 返回结果
+	// Return result
 	if reurl != "" {
-		Common.LogDebug(fmt.Sprintf("返回重定向URL: %s", reurl))
+		Common.LogDebug(fmt.Sprintf("Returning redirect URL: %s", reurl))
 		return nil, reurl, CheckData
 	}
 	if resp.StatusCode == 400 && !strings.HasPrefix(info.Url, "https") {
-		Common.LogDebug("返回HTTPS升级标志")
+		Common.LogDebug("Returning HTTPS upgrade flag")
 		return nil, "https", CheckData
 	}
-	Common.LogDebug("geturl执行完成，无特殊返回")
+	Common.LogDebug("geturl execution completed, no special return")
 	return nil, "", CheckData
 }
 
-// getRespBody 读取HTTP响应体内容
+// getRespBody Read HTTP response body content
 func getRespBody(oResp *http.Response) ([]byte, error) {
-	Common.LogDebug("开始读取响应体内容")
+	Common.LogDebug("Start reading response body content")
 	var body []byte
 
-	// 处理gzip压缩的响应
+	// Process gzip compressed response
 	if oResp.Header.Get("Content-Encoding") == "gzip" {
-		Common.LogDebug("检测到gzip压缩，开始解压")
+		Common.LogDebug("Detected gzip compression, start decompressing")
 		gr, err := gzip.NewReader(oResp.Body)
 		if err != nil {
-			Common.LogDebug(fmt.Sprintf("创建gzip解压器失败: %v", err))
+			Common.LogDebug(fmt.Sprintf("Failed to create gzip decompressor: %v", err))
 			return nil, err
 		}
 		defer gr.Close()
 
-		// 循环读取解压内容
+		// Loop to read decompressed content
 		for {
 			buf := make([]byte, 1024)
 			n, err := gr.Read(buf)
 			if err != nil && err != io.EOF {
-				Common.LogDebug(fmt.Sprintf("读取压缩内容失败: %v", err))
+				Common.LogDebug(fmt.Sprintf("Failed to read compressed content: %v", err))
 				return nil, err
 			}
 			if n == 0 {
@@ -297,113 +297,113 @@ func getRespBody(oResp *http.Response) ([]byte, error) {
 			}
 			body = append(body, buf...)
 		}
-		Common.LogDebug(fmt.Sprintf("gzip解压完成，内容长度: %d", len(body)))
+		Common.LogDebug(fmt.Sprintf("gzip decompression completed, content length: %d", len(body)))
 	} else {
-		// 直接读取未压缩的响应
-		Common.LogDebug("读取未压缩的响应内容")
+		// Directly read uncompressed response
+		Common.LogDebug("Reading uncompressed response content")
 		raw, err := io.ReadAll(oResp.Body)
 		if err != nil {
-			Common.LogDebug(fmt.Sprintf("读取响应内容失败: %v", err))
+			Common.LogDebug(fmt.Sprintf("Failed to read response content: %v", err))
 			return nil, err
 		}
 		body = raw
-		Common.LogDebug(fmt.Sprintf("读取完成，内容长度: %d", len(body)))
+		Common.LogDebug(fmt.Sprintf("Reading completed, content length: %d", len(body)))
 	}
 	return body, nil
 }
 
-// gettitle 从HTML内容中提取网页标题
+// gettitle Extract web page title from HTML content
 func gettitle(body []byte) (title string) {
-	Common.LogDebug("开始提取网页标题")
+	Common.LogDebug("Start extracting web page title")
 
-	// 使用正则表达式匹配title标签内容
+	// Use regular expression to match title tag content
 	re := regexp.MustCompile("(?ims)<title.*?>(.*?)</title>")
 	find := re.FindSubmatch(body)
 
 	if len(find) > 1 {
 		title = string(find[1])
-		Common.LogDebug(fmt.Sprintf("找到原始标题: %s", title))
+		Common.LogDebug(fmt.Sprintf("Found original title: %s", title))
 
-		// 清理标题内容
-		title = strings.TrimSpace(title)                  // 去除首尾空格
-		title = strings.Replace(title, "\n", "", -1)      // 去除换行
-		title = strings.Replace(title, "\r", "", -1)      // 去除回车
-		title = strings.Replace(title, "&nbsp;", " ", -1) // 替换HTML空格
+		// Clean title content
+		title = strings.TrimSpace(title)                  // Remove leading and trailing spaces
+		title = strings.Replace(title, "\n", "", -1)      // Remove newlines
+		title = strings.Replace(title, "\r", "", -1)      // Remove carriage returns
+		title = strings.Replace(title, "&nbsp;", " ", -1) // Replace HTML spaces
 
-		// 截断过长的标题
+		// Truncate overly long titles
 		if len(title) > 100 {
-			Common.LogDebug("标题超过100字符，进行截断")
+			Common.LogDebug("Title exceeds 100 characters, truncating")
 			title = title[:100]
 		}
 
-		// 处理空标题
+		// Handle empty titles
 		if title == "" {
-			Common.LogDebug("标题为空，使用双引号代替")
+			Common.LogDebug("Title is empty, using double quotes instead")
 			title = "\"\""
 		}
 	} else {
-		Common.LogDebug("未找到标题标签")
-		title = "无标题"
+		Common.LogDebug("Title tag not found")
+		title = "No title"
 	}
-	Common.LogDebug(fmt.Sprintf("最终标题: %s", title))
+	Common.LogDebug(fmt.Sprintf("Final title: %s", title))
 	return
 }
 
-// GetProtocol 检测目标主机的协议类型(HTTP/HTTPS)
+// GetProtocol Detect the protocol type (HTTP/HTTPS) of the target host
 func GetProtocol(host string, Timeout int64) (protocol string) {
-	Common.LogDebug(fmt.Sprintf("开始检测主机协议 - 主机: %s, 超时: %d秒", host, Timeout))
+	Common.LogDebug(fmt.Sprintf("Start detecting host protocol - Host: %s, Timeout: %d seconds", host, Timeout))
 	protocol = "http"
 
-	// 根据标准端口快速判断协议
+	// Quickly determine protocol based on standard ports
 	if strings.HasSuffix(host, ":80") || !strings.Contains(host, ":") {
-		Common.LogDebug("检测到HTTP标准端口或无端口，使用HTTP协议")
+		Common.LogDebug("Detected HTTP standard port or no port, using HTTP protocol")
 		return
 	} else if strings.HasSuffix(host, ":443") {
-		Common.LogDebug("检测到HTTPS标准端口，使用HTTPS协议")
+		Common.LogDebug("Detected HTTPS standard port, using HTTPS protocol")
 		protocol = "https"
 		return
 	}
 
-	// 尝试建立TCP连接
-	Common.LogDebug("尝试建立TCP连接")
+	// Attempt to establish TCP connection
+	Common.LogDebug("Attempting to establish TCP connection")
 	socksconn, err := Common.WrapperTcpWithTimeout("tcp", host, time.Duration(Timeout)*time.Second)
 	if err != nil {
-		Common.LogDebug(fmt.Sprintf("TCP连接失败: %v", err))
+		Common.LogDebug(fmt.Sprintf("TCP connection failed: %v", err))
 		return
 	}
 
-	// 尝试TLS握手
-	Common.LogDebug("开始TLS握手")
+	// Attempt TLS handshake
+	Common.LogDebug("Start TLS handshake")
 	conn := tls.Client(socksconn, &tls.Config{
 		MinVersion:         tls.VersionTLS10,
 		InsecureSkipVerify: true,
 	})
 
-	// 确保连接关闭
+	// Ensure connection is closed
 	defer func() {
 		if conn != nil {
 			defer func() {
 				if err := recover(); err != nil {
-					Common.LogError(fmt.Sprintf("连接关闭时发生错误: %v", err))
+					Common.LogError(fmt.Sprintf("Error occurred while closing connection: %v", err))
 				}
 			}()
-			Common.LogDebug("关闭连接")
+			Common.LogDebug("Closing connection")
 			conn.Close()
 		}
 	}()
 
-	// 设置连接超时
+	// Set connection timeout
 	conn.SetDeadline(time.Now().Add(time.Duration(Timeout) * time.Second))
 
-	// 执行TLS握手
+	// Perform TLS handshake
 	err = conn.Handshake()
 	if err == nil || strings.Contains(err.Error(), "handshake failure") {
-		Common.LogDebug("TLS握手成功或握手失败但确认是HTTPS协议")
+		Common.LogDebug("TLS handshake successful or handshake failed but confirmed to be HTTPS protocol")
 		protocol = "https"
 	} else {
-		Common.LogDebug(fmt.Sprintf("TLS握手失败: %v，使用HTTP协议", err))
+		Common.LogDebug(fmt.Sprintf("TLS handshake failed: %v, using HTTP protocol", err))
 	}
 
-	Common.LogDebug(fmt.Sprintf("协议检测完成，使用: %s", protocol))
+	Common.LogDebug(fmt.Sprintf("Protocol detection completed, using: %s", protocol))
 	return protocol
 }
